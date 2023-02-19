@@ -1,6 +1,7 @@
 package net.minecraft.client.renderer.entity;
 
 import me.dev.foodtower.Client;
+import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
 import me.dev.foodtower.module.modules.movement.Scaffold;
 import me.dev.foodtower.module.modules.render.Nametags;
@@ -152,9 +153,9 @@ public abstract class RendererLivingEntity<T extends EntityLivingBase> extends R
             if (entity == Minecraft.getMinecraft().thePlayer && Scaffold.getBlockSlot() != -1 &&
                     Client.instance.getModuleManager().getModuleByClass(Scaffold.class).isEnabled()) {
                 f7 = Rotation.getPitch();
-            } else if (entity == Minecraft.getMinecraft().thePlayer && Killaura.target != null
-                    && Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
-                f7 = Killaura.rotations[1];
+            } else if (entity == Minecraft.getMinecraft().thePlayer && Aura.curTarget != null
+                    && Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled()) {
+                f7 = Aura.rotations[1];
             } else {
                 f7 = entity.prevRotationPitch
                         + (entity.rotationPitch - entity.prevRotationPitch) * partialTicks;

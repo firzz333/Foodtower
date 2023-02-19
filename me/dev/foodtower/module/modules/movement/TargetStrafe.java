@@ -12,6 +12,7 @@ import me.dev.foodtower.api.events.EventPreUpdate;
 import me.dev.foodtower.api.events.EventRender3D;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
+import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
 import me.dev.foodtower.utils.math.RotationUtil;
 import me.dev.foodtower.utils.normal.MoveUtils;
@@ -42,11 +43,11 @@ public class TargetStrafe extends Module {
 
     @NMSL
     private void onUpdate(EventPreUpdate e) {
-        if (lockPersonView.getValue() && Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
+        if (lockPersonView.getValue() && (Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled() || Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled())) {
             if ((Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled() || Client.instance.getModuleManager().getModuleByClass(Flight.class).isEnabled())) {
-                if (Killaura.target != null && !Killaura.target.isDead) {
+                if (Killaura.target != null && !Killaura.target.isDead || Aura.curTarget != null && !Aura.curTarget.isDead) {
                     mc.gameSettings.thirdPersonView = 1;
-                } else if ((Killaura.target != null && Killaura.target.isDead) || !Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
+                } else if ((Killaura.target != null && Killaura.target.isDead) || (Aura.curTarget.isDead || Aura.curTarget == null || !Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled()) || !Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
                     mc.gameSettings.thirdPersonView = 0;
                 }
             }
@@ -55,19 +56,19 @@ public class TargetStrafe extends Module {
 
     @NMSL
     private void onMove(EventMove em) {
-        if (PlayerUtil.isMoving2()) {
-            if (Killaura.target != null && !Killaura.target.isDead) {
+        if (MoveUtils.isMoving()) {
+            if (Killaura.target != null && !Killaura.target.isDead || Aura.curTarget != null && !Aura.curTarget.isDead) {
                 if (onlyspeed.getValue() && Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled()) {
                     if (jumpkey.getValue() && mc.gameSettings.keyBindJump.pressed) {
-                        move(em, MoveUtils.defaultSpeed(), Killaura.target);
+                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
                     } else if (!jumpkey.getValue()) {
-                        move(em, MoveUtils.defaultSpeed(), Killaura.target);
+                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
                     }
                 } else if (!onlyspeed.getValue()) {
                     if (jumpkey.getValue() && mc.gameSettings.keyBindJump.pressed) {
-                        move(em, MoveUtils.defaultSpeed(), Killaura.target);
+                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
                     } else if (!jumpkey.getValue()) {
-                        move(em, MoveUtils.defaultSpeed(), Killaura.target);
+                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
                     }
                 }
             }
@@ -122,8 +123,8 @@ public class TargetStrafe extends Module {
 
     @NMSL
     private void onRender(EventRender3D e) {
-        if (Killaura.target != null && !Killaura.target.isDead && render.getValue()) {
-            RenderUtil.drawCircle(Killaura.target, e.getPartialTicks(), range.getValue());
+        if ((Killaura.target != null && !Killaura.target.isDead || Aura.curTarget != null && !Aura.curTarget.isDead) && render.getValue()) {
+            RenderUtil.drawCircle(Aura.curTarget, e.getPartialTicks(), range.getValue());
         }
     }
 

@@ -10,6 +10,7 @@ import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventPreUpdate;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
+import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
 import me.dev.foodtower.utils.math.TimeHelper;
 import me.dev.foodtower.utils.normal.PlayerUtil;
@@ -62,7 +63,7 @@ public class AutoClicker extends Module {
             time2.reset();
         }
 
-        if (!Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled() && Mouse.isButtonDown(0) && this.time.delay((float) this.delay) && Minecraft.currentScreen == null && !isblock) {
+        if (!Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled() && !Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled() && Mouse.isButtonDown(0) && this.time.delay((float) this.delay) && Minecraft.currentScreen == null && !isblock) {
             PlayerUtil.blockHit(mc.objectMouseOver.entityHit, this.ab.getValue());
             mc.leftClickCounter = 0;
             mc.clickMouse();

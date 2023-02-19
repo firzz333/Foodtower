@@ -12,6 +12,7 @@ import me.dev.foodtower.api.events.EventPostUpdate;
 import me.dev.foodtower.api.events.EventPreUpdate;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
+import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
 import me.dev.foodtower.utils.normal.PacketUtils;
 import me.dev.foodtower.value.Mode;
@@ -49,7 +50,7 @@ public class NoSlow extends Module {
 
     @NMSL
     private void onMove(EventPreUpdate eventPreUpdate) {
-        if (mc.thePlayer.isUsingItem() || mc.thePlayer.isBlocking() || Killaura.blocking) {
+        if (mc.thePlayer.isUsingItem() || mc.thePlayer.isBlocking() || Killaura.blocking || Aura.isBlocking) {
             switch (mode.getValue().toString().toLowerCase()) {
                 case "ncp":
                     mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, new BlockPos(-1, -1, -1), EnumFacing.DOWN));
@@ -67,17 +68,17 @@ public class NoSlow extends Module {
     private void onMove(EventPostUpdate eventPostUpdate) {
             switch (mode.getValue().toString().toLowerCase()) {
                 case "ncp":
-                    if (mc.thePlayer.isUsingItem() || mc.thePlayer.isBlocking() || Killaura.blocking) {
+                    if (mc.thePlayer.isUsingItem() || mc.thePlayer.isBlocking() || Killaura.blocking || Aura.isBlocking) {
                         mc.getNetHandler().addToSendQueue(new C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem()));
                     }
                     break;
                 case "aac":
-                    if (mc.thePlayer.ticksExisted % 3 != 0 && (mc.thePlayer.isUsingItem() || mc.thePlayer.isBlocking() || Killaura.blocking)) {
+                    if (mc.thePlayer.ticksExisted % 3 != 0 && (mc.thePlayer.isUsingItem() || mc.thePlayer.isBlocking() || Killaura.blocking || Aura.isBlocking)) {
                         mc.getNetHandler().addToSendQueue(new C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem()));
                     }
                     break;
                 case "hypixel":
-                    if ((!Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled() || !Killaura.blocking) && mc.thePlayer.getItemInUse() != null && mc.thePlayer.getItemInUse().getItem() != null) {
+                    if (((!Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled() || !Killaura.blocking) || (!Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled() || !Aura.isBlocking)) && mc.thePlayer.getItemInUse() != null && mc.thePlayer.getItemInUse().getItem() != null) {
                         if (mc.thePlayer.isUsingItem() && (mc.thePlayer.getItemInUse().getItem() instanceof ItemFood || mc.thePlayer.getItemInUse().getItem() instanceof ItemBucketMilk || mc.thePlayer.getItemInUse().getItem() instanceof ItemPotion) && mc.thePlayer.getItemInUseCount() >= 1) {
                             PacketUtils.sendPacketNoEvent(new C09PacketHeldItemChange(mc.thePlayer.inventory.currentItem));
                         }

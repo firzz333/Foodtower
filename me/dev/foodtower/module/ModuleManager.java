@@ -48,6 +48,8 @@ public class ModuleManager
 
     @Override
     public void init() {
+        registerModule(new Aura());
+        registerModule(new AntiAim());
         registerModule(new AutoGapple());
         registerModule(new NoClickDelay());
         registerModule(new LegitSpeed());

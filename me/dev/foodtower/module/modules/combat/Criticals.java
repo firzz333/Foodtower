@@ -39,7 +39,7 @@ public class Criticals extends Module {
     }
 
     private boolean canCrit() {
-        return timer.hasReached(delay.getValue()) && mc.thePlayer.onGround && !mc.thePlayer.isInWater() && !Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled() && Killaura.target != null || alway.getValue();
+        return timer.hasReached(delay.getValue()) && mc.thePlayer.onGround && !mc.thePlayer.isInWater() && !Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled() && (Killaura.target != null || Aura.curTarget != null) || alway.getValue();
     }
 
     @Override

@@ -1361,5 +1361,49 @@ public class RenderUtil {
             GL11.glEnd();
         }
     }
+
+    public static void drawFilledESP(Entity entity, Color color) {
+
+        double x = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * Minecraft.getMinecraft().timer.renderPartialTicks
+                - Minecraft.getMinecraft().getRenderManager().renderPosX;
+        double y = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * Minecraft.getMinecraft().timer.renderPartialTicks
+                - Minecraft.getMinecraft().getRenderManager().renderPosY;
+        double z = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * Minecraft.getMinecraft().timer.renderPartialTicks
+                - Minecraft.getMinecraft().getRenderManager().renderPosZ;
+        final double width = entity.getEntityBoundingBox().maxX - entity.getEntityBoundingBox().minX;
+        final double height = entity.getEntityBoundingBox().maxY - entity.getEntityBoundingBox().minY + 0.25;
+
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glPushMatrix();
+        drawEntityESP(x, y, z, width, height, color.getRed() / 255.0f, color.getGreen() / 255.0f,
+                color.getBlue() / 255.0f, color.getAlpha() / 255.0f, 1.0f, 1.0f, 1.0f, 0.5f, 1.2f);
+        GL11.glPopMatrix();
+        GL11.glDisable(GL11.GL_BLEND);
+
+    }
+
+    public static void drawEntityESP(double x, double y, double z, double width, double height, float red, float green,
+                                     float blue, float alpha, float lineRed, float lineGreen, float lineBlue, float lineAlpha, float lineWdith) {
+        GL11.glPushMatrix();
+        GL11.glEnable((int) 3042);
+        GL11.glBlendFunc((int) 770, (int) 771);
+        GL11.glDisable((int) 3553);
+        GL11.glEnable((int) 2848);
+        GL11.glDisable((int) 2929);
+        GL11.glDepthMask((boolean) false);
+        GL11.glColor4f((float) red, (float) green, (float) blue, (float) alpha);
+        RenderUtil.drawBoundingBox(new AxisAlignedBB(x - width, y, z - width, x + width, y + height, z + width));
+        GL11.glLineWidth((float) lineWdith);
+        GL11.glColor4f((float) lineRed, (float) lineGreen, (float) lineBlue, (float) lineAlpha);
+        RenderUtil
+                .drawOutlinedBoundingBox(new AxisAlignedBB(x - width, y, z - width, x + width, y + height, z + width));
+        GL11.glDisable((int) 2848);
+        GL11.glEnable((int) 3553);
+        GL11.glEnable((int) 2929);
+        GL11.glDepthMask((boolean) true);
+        GL11.glDisable((int) 3042);
+        GL11.glPopMatrix();
+    }
+
 }
 

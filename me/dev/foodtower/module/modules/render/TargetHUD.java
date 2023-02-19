@@ -10,6 +10,7 @@ import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventRender2D;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
+import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
 import me.dev.foodtower.utils.math.MathUtils;
 import me.dev.foodtower.utils.normal.RenderUtil;
@@ -72,9 +73,9 @@ public class TargetHUD extends Module {
 
     @NMSL
     public void onRender2D(EventRender2D event) {
-        EntityLivingBase target = Killaura.target;
+        EntityLivingBase target = Aura.curTarget;
         if (this.mode.getValue() == TargetMode.ETB) {
-            if (target == null || !(target instanceof EntityPlayer) || mc.theWorld.getEntityByID(target.getEntityId()) == null || mc.theWorld.getEntityByID(target.getEntityId()).getDistanceSqToEntity(mc.thePlayer) > 100) {
+            if (target == null || !(target instanceof EntityPlayer) || mc.theWorld.getEntityByID(target.getEntityId()) == null || mc.theWorld.getEntityByID(target.getEntityId()).getDistanceSqToEntity(mc.thePlayer) > Aura.range.getValue()) {
                 return;
             }
             hurtPercent = target.hurtTime;
@@ -141,107 +142,6 @@ public class TargetHUD extends Module {
             GlStateManager.disableBlend();
             GlStateManager.popMatrix();
         }
-    }
-    private void Target(final int x, final int y) {
-        Killaura ka = (Killaura) Client.instance.getModuleManager().getModuleByClass(Killaura.class);
-        EntityLivingBase target = ka.target;
-        if (target == null || !(target instanceof EntityPlayer)) return;
-        GL11.glPushMatrix();
-        final List<ItemStack> stuff = new ArrayList<>();
-        int cock = -2;
-        final ItemStack helmet = ((EntityPlayer) target).getCurrentArmor(3);
-        if (helmet != null) {
-            stuff.add(helmet);
-        }
-
-        for (final ItemStack yes : stuff) {
-            if (Minecraft.getMinecraft().theWorld != null) {
-                RenderHelper.enableGUIStandardItemLighting();
-                cock += 20;
-            }
-            GlStateManager.pushMatrix();
-            GlStateManager.disableAlpha();
-            GlStateManager.clear(256);
-            GlStateManager.enableBlend();
-            Minecraft.getMinecraft().getRenderItem().renderItemIntoGUI(yes, cock + x, y);
-            GlStateManager.disableBlend();
-            GlStateManager.scale(0.5, 0.5, 0.5);
-            GlStateManager.disableDepth();
-            GlStateManager.disableLighting();
-            GlStateManager.enableDepth();
-            GlStateManager.scale(2.0f, 2.0f, 2.0f);
-            GlStateManager.enableAlpha();
-            GlStateManager.popMatrix();
-        }
-        GL11.glPopMatrix();
-    }
-
-    private void NoThing(final int x, final int y) {
-        Killaura ka = (Killaura) Client.instance.getModuleManager().getModuleByClass(Killaura.class);
-        EntityLivingBase target = ka.target;
-        if (target == null || !(target instanceof EntityPlayer)) return;
-        GL11.glPushMatrix();
-        final List<ItemStack> stuff = new ArrayList<>();
-        int cock = -2;
-        final ItemStack legs = ((EntityPlayer) target).getCurrentArmor(1);
-        if (legs != null) {
-            stuff.add(legs);
-        }
-
-        for (final ItemStack yes : stuff) {
-            if (Minecraft.getMinecraft().theWorld != null) {
-                RenderHelper.enableGUIStandardItemLighting();
-                cock += 20;
-            }
-            GlStateManager.pushMatrix();
-            GlStateManager.disableAlpha();
-            GlStateManager.clear(256);
-            GlStateManager.enableBlend();
-            Minecraft.getMinecraft().getRenderItem().renderItemIntoGUI(yes, cock + x, y);
-            GlStateManager.disableBlend();
-            GlStateManager.scale(0.5, 0.5, 0.5);
-            GlStateManager.disableDepth();
-            GlStateManager.disableLighting();
-            GlStateManager.enableDepth();
-            GlStateManager.scale(2.0f, 2.0f, 2.0f);
-            GlStateManager.enableAlpha();
-            GlStateManager.popMatrix();
-        }
-        GL11.glPopMatrix();
-    }
-
-    private void NMSL(final int x, final int y) {
-        Killaura ka = (Killaura) Client.instance.getModuleManager().getModuleByClass(Killaura.class);
-        EntityLivingBase target = ka.target;
-        if (target == null || !(target instanceof EntityPlayer)) return;
-        GL11.glPushMatrix();
-        final List<ItemStack> stuff = new ArrayList<>();
-        int cock = -2;
-        final ItemStack boots = ((EntityPlayer) target).getCurrentArmor(0);
-        if (boots != null) {
-            stuff.add(boots);
-        }
-
-        for (final ItemStack yes : stuff) {
-            if (Minecraft.getMinecraft().theWorld != null) {
-                RenderHelper.enableGUIStandardItemLighting();
-                cock += 20;
-            }
-            GlStateManager.pushMatrix();
-            GlStateManager.disableAlpha();
-            GlStateManager.clear(256);
-            GlStateManager.enableBlend();
-            Minecraft.getMinecraft().getRenderItem().renderItemIntoGUI(yes, cock + x, y);
-            GlStateManager.disableBlend();
-            GlStateManager.scale(0.5, 0.5, 0.5);
-            GlStateManager.disableDepth();
-            GlStateManager.disableLighting();
-            GlStateManager.enableDepth();
-            GlStateManager.scale(2.0f, 2.0f, 2.0f);
-            GlStateManager.enableAlpha();
-            GlStateManager.popMatrix();
-        }
-        GL11.glPopMatrix();
     }
 
     enum TargetMode {
