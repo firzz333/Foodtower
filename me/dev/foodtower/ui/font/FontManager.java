@@ -27,6 +27,7 @@ public class FontManager {
     public static final EnglishFontRenderer FluxFont30;
     public static final EnglishFontRenderer FluxIcon18;
     public static final EnglishFontRenderer FluxIcon10;
+    public static final EnglishFontRenderer BalooFont30;
 
     static {
         F18 = new ChineseFontRenderer(fontFromTTF("font.ttf", 18, Font.PLAIN), true, true, true, 0, 0);
@@ -40,6 +41,7 @@ public class FontManager {
         FluxIcon15 = new EnglishFontRenderer(fontFromTTF("Icon.ttf", 15, Font.PLAIN), true, true);
         FluxIcon18 = new EnglishFontRenderer(fontFromTTF("Icon.ttf", 18, Font.PLAIN), true, true);
         FluxIcon10 = new EnglishFontRenderer(fontFromTTF("Icon.ttf", 10, Font.PLAIN), true, true);
+        BalooFont30 = new EnglishFontRenderer(fontFromTTF("Baloo.ttf", 30, Font.PLAIN), true, true);
     }
 
     private FontManager() {

@@ -174,7 +174,7 @@ public class CSGOClickUI extends GuiScreen implements GuiYesNoCallback {
                             (new Color(61, 141, 255, (int) opacity.getOpacity())).getRGB());
                     RenderUtil.drawRect2((float) ((double) x + render + 2D), mY, (float) ((double) x + render + 7D),
                             mY + 5, (new Color(61, 141, 255, (int) opacity.getOpacity())).getRGB());
-                    mc.fontRendererObj.drawStringWithShadow(value.getName() + ": " + value.getValue(), startX + 210, mY, -1);
+                    mc.fontRendererObj.drawStringWithShadow(value.getDisplayName() + ": " + value.getValue(), startX + 210, mY, -1);
                     if (!Mouse.isButtonDown(0)) {
                         this.previousmouse = false;
                     }
@@ -200,7 +200,7 @@ public class CSGOClickUI extends GuiScreen implements GuiYesNoCallback {
                 }
                 if (value instanceof Option) {
                     float x = startX + 300;
-                    mc.fontRendererObj.drawStringWithShadow(value.getName(), startX + 210, mY, -1);
+                    mc.fontRendererObj.drawStringWithShadow(value.getDisplayName(), startX + 210, mY, -1);
                     RenderUtil.drawRect2(x + 56, mY, x + 76, mY + 1,
                             new Color(255, 255, 255, (int) opacity.getOpacity()).getRGB());
                     RenderUtil.drawRect2(x + 56, mY + 8, x + 76, mY + 9,
@@ -216,7 +216,7 @@ public class CSGOClickUI extends GuiScreen implements GuiYesNoCallback {
                         RenderUtil.drawRect2(x + 58, mY + 2, x + 65, mY + 7,
                                 new Color(150, 150, 150, (int) opacity.getOpacity()).getRGB());
                     }
-                    mc.fontRendererObj.drawStringWithShadow(value.getName(), startX + 210, mY, -1);
+                    mc.fontRendererObj.drawStringWithShadow(value.getDisplayName(), startX + 210, mY, -1);
                     Gui.drawRect(x + 56, mY, x + 76, mY + 1, new Color(255, 255, 255).getRGB());
                     Gui.drawRect(x + 56, mY + 8, x + 76, mY + 9, new Color(255, 255, 255).getRGB());
                     Gui.drawRect(x + 56, mY, x + 57, mY + 9, new Color(255, 255, 255).getRGB());
@@ -246,7 +246,7 @@ public class CSGOClickUI extends GuiScreen implements GuiYesNoCallback {
                 }
                 if (value instanceof Mode) {
                     float x = startX + 300;
-                    mc.fontRendererObj.drawStringWithShadow(value.getName(), startX + 210, mY, -1);
+                    mc.fontRendererObj.drawStringWithShadow(value.getDisplayName(), startX + 210, mY, -1);
                     RenderUtil.drawRect2(x - 5, mY - 5, x + 90, mY + 15,
                             new Color(56, 56, 56, (int) opacity.getOpacity()).getRGB());
                     RenderUtil.R2DUtils.drawBorderedRect(x - 5, mY - 5, x + 90, mY + 15,

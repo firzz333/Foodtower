@@ -12,6 +12,7 @@ import me.dev.foodtower.api.events.EventPacketSend;
 import me.dev.foodtower.api.events.EventPreUpdate;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
+import me.dev.foodtower.module.modules.movement.Flight;
 import me.dev.foodtower.module.modules.movement.Speed;
 import me.dev.foodtower.utils.math.TimerUtil;
 import me.dev.foodtower.value.Mode;
@@ -24,9 +25,8 @@ import java.awt.*;
 public class Criticals extends Module {
     private final Mode mode = new Mode("Mode", "mode", CritMode.values(), CritMode.Packet);
     private final Numbers<Double> delay = new Numbers<>("Delay", "delay", 0.0, 0.0, 500.0, 10.0);
-    private Option<Boolean> alway = new Option<>("Alway", "alway", false);
-
     private final TimerUtil timer = new TimerUtil();
+    boolean edit;
 
     public Criticals() {
         super("Criticals", "重击", new String[]{"crits", "crit"}, ModuleType.Combat);
@@ -39,7 +39,7 @@ public class Criticals extends Module {
     }
 
     private boolean canCrit() {
-        return timer.hasReached(delay.getValue()) && mc.thePlayer.onGround && !mc.thePlayer.isInWater() && !Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled() && (Killaura.target != null || Aura.curTarget != null) || alway.getValue();
+        return mc.thePlayer.onGround || !mc.thePlayer.isOnLadder() || !mc.thePlayer.isInWeb || !mc.thePlayer.isInWater() || !mc.thePlayer.isInLava() || mc.thePlayer.ridingEntity == null || !Client.instance.getModuleManager().getModuleByClass(Flight.class).isEnabled() || !timer.hasReached(delay.getValue());
     }
 
     @Override
@@ -56,45 +56,56 @@ public class Criticals extends Module {
         if (canCrit()) {
             switch (mode.getValue().toString().toLowerCase()) {
                 case "packet":
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.06, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.05, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0611257723, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0041102102, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0510020980, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0121550927, z, false));
                     break;
                 case "hypixel":
                     mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.11, z, true));
                     mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
                     break;
-                case "hvh":
-                    mc.thePlayer.setPosition(x, y + 0.06, z);
-                    break;
                 case "hop":
-                    mc.thePlayer.motionY = 0.1;
-                    mc.thePlayer.fallDistance = 0.1f;
-                    mc.thePlayer.onGround = false;
+                    mc.thePlayer.motionY = 0.2;
                     break;
                 case "jumps":
-                    if (mc.thePlayer.onGround)
-                        mc.thePlayer.jump();
+                    mc.thePlayer.jump();
                     break;
-                case "noground":
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y, z, false));
+                case "fall":
+                    mc.thePlayer.setPosition(x, y + 1, z);
                     break;
+                case "packetground":
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.41999998688698, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.7531999805212, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 1.00133597911214, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 1.16610926093821, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 1.24918707874468, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 1.1707870772188, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 1.0155550727022, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.78502770378924, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.4807108763317, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.4807108763317, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0, z, true));
             }
             timer.reset();
+            edit = true;
+        }
+    }
+
+    @NMSL
+    private void onPacket(EventPacketSend e) {
+        if (mode.getValue().toString().toLowerCase().equals("edit")) {
+            if (edit) {
+                if (e.getPacket() instanceof C03PacketPlayer) {
+                    e.setPacket(new C03PacketPlayer.C04PacketPlayerPosition(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, false));
+                }
+                edit = false;
+            }
         }
     }
 
     enum CritMode {
-        Packet,
-        NoGround,
-        Hypixel,
-        HvH,
-        Hop,
-        Jumps
+        Packet, Edit, PacketGround, Hypixel, Hop, Jumps, Fall
     }
 }
 

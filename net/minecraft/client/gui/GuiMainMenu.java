@@ -45,11 +45,7 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback
         RenderUtil.drawImage(new ResourceLocation("foodtower/background.png"), 0, 0, res.getScaledWidth(), res.getScaledHeight());
         if (!Client.cracked)
             GaussianBlur.renderBlur(10);
-        RenderUtil.drawRect(res.getScaledWidth() / 2 - 300, res.getScaledHeight() / 2 - 110, res.getScaledWidth() / 2 + 300, res.getScaledHeight() / 2 + 110, new Color(81, 74, 69, 180).getRGB());
-        RenderUtil.drawRect(res.getScaledWidth() / 2 - 300, res.getScaledHeight() / 2 + 50, res.getScaledWidth() / 2 + 300, res.getScaledHeight() / 2 + 110, new Color(87, 77, 68, 180).getRGB());
-        FontManager.F22.drawString("FoodTower", res.getScaledWidth() / 2 - 250, res.getScaledHeight() / 2 - 70, -1);
-        FontManager.F22.drawString("Build " + Client.instance.version, res.getScaledWidth() / 2 - 250, res.getScaledHeight() / 2 - 27, -1);
-        FontManager.F22.drawString("Logged in as " + Client.user, res.getScaledWidth() / 2 + 135, res.getScaledHeight() / 2 + 30, -1);
+        FontManager.BalooFont30.drawString("FoodTower", res.getScaledWidth()/2-200 + 160, res.getScaledHeight()/2 - 50, -1);
         super.drawScreen(mouseX, mouseY, partialTicks);
     }
 

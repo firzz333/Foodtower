@@ -19,29 +19,22 @@ public class TimerUtil {
         return false;
     }
     public boolean hasTimeElapsed(long time) {
-        return System.currentTimeMillis() - lastMS > time;
+        return System.currentTimeMillis() - lastMS >= time;
     }
     public void reset() {
         this.lastMS = this.getCurrentMS();
     }
     public boolean hasTimeElapsed(long time, boolean reset) {
-
         if (lastMS > System.currentTimeMillis()) {
             lastMS = System.currentTimeMillis();
         }
-
-        if (System.currentTimeMillis() - lastMS > time) {
-
+        if (System.currentTimeMillis() - lastMS >= time) {
             if (reset)
                 reset();
-
             return true;
-
-
         }else {
             return false;
         }
-
     }
     public boolean delay(float milliSec) {
         if ((float) (this.getTime() - this.lastMS) >= milliSec) {

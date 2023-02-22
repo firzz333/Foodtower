@@ -68,7 +68,7 @@ public class AntiAim extends Module {
     public void onEvent(final EventPreUpdate event) {
         final EventPreUpdate em = event;
         final Scaffold Scaffold = (Scaffold)Client.instance.getModuleManager().getModuleByClass(Scaffold.class);
-        if ((Killaura.target == null || Aura.curTarget == null) && !Scaffold.isEnabled()) {
+        if (Killaura.curTarget == null && !Scaffold.isEnabled()) {
             if (this.lastAngles == null) {
                 final float[] var10001 = new float[2];
                 Minecraft var10002 = AntiAim.mc;

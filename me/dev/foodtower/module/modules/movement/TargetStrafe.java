@@ -5,6 +5,7 @@ Project:foodtower Reborn
 */
 package me.dev.foodtower.module.modules.movement;
 
+
 import me.dev.foodtower.Client;
 import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventMove;
@@ -12,125 +13,210 @@ import me.dev.foodtower.api.events.EventPreUpdate;
 import me.dev.foodtower.api.events.EventRender3D;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
-import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
+import me.dev.foodtower.utils.math.MathUtil;
+import me.dev.foodtower.utils.math.MathUtils;
 import me.dev.foodtower.utils.math.RotationUtil;
+import me.dev.foodtower.utils.math.gl.GLUtils;
 import me.dev.foodtower.utils.normal.MoveUtils;
-import me.dev.foodtower.utils.normal.PlayerUtil;
 import me.dev.foodtower.utils.normal.RenderUtil;
-import me.dev.foodtower.value.Mode;
+import me.dev.foodtower.utils.skid.autunm.entity.EntityValidator;
 import me.dev.foodtower.value.Numbers;
 import me.dev.foodtower.value.Option;
-import net.minecraft.block.BlockAir;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.MathHelper;
-import net.optifine.vecmath.Vector3d;
+import org.lwjgl.opengl.GL11;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TargetStrafe extends Module {
+    public static Numbers<Double> range;
+    public Entity target;
+    public static float hue;
+    private double degree;
+    private float groundY;
+    public static  Option<Boolean> esp = new Option<Boolean>("Render", "render", true);
+    public static  Option<Boolean> check = new Option<Boolean>("Check", "check", true);
+    public static  Option<Boolean> behind = new Option<>("Behind", "behind", false);
+    public static int index;
+    private boolean left;
+    private float rAnims;
+    private List<Entity> targets;
+
     public TargetStrafe() {
-        super("TargetStrafe", "转圈一圈", new String[]{"TargetStrafe"}, ModuleType.Movement);
+        super("TargetStrafe", "转圈一圈", new String[] { "TargetStrafe" }, ModuleType.Movement);
+        this.degree = 0.0;
+        this.left = true;
+        this.targets = new ArrayList<Entity>();
     }
 
-    public static boolean direction = true;
-    private final Mode mode = new Mode("Mode", "mode", TargetStrafeMode.values(), TargetStrafeMode.Adaptive);
-    private Numbers<Double> range = new Numbers<Double>("Range", "range", 2.0, 0.0, 6.0, 0.1);
-    private Option<Boolean> render = new Option<>("Render", "render", true);
-    public static final Option<Boolean> onlyspeed = new Option<>("OnlySpeed", "only Speed", true);
-    public static final Option<Boolean> jumpkey = new Option<>("OnlyJump", "OnlyJump", true);
-    private final Option<Boolean> lockPersonView = new Option<>("LockPersonView", "lockPersonView", true);
-
-    @NMSL
-    private void onUpdate(EventPreUpdate e) {
-        if (lockPersonView.getValue() && (Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled() || Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled())) {
-            if ((Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled() || Client.instance.getModuleManager().getModuleByClass(Flight.class).isEnabled())) {
-                if (Killaura.target != null && !Killaura.target.isDead || Aura.curTarget != null && !Aura.curTarget.isDead) {
-                    mc.gameSettings.thirdPersonView = 1;
-                } else if ((Killaura.target != null && Killaura.target.isDead) || (Aura.curTarget.isDead || Aura.curTarget == null || !Client.instance.getModuleManager().getModuleByClass(Aura.class).isEnabled()) || !Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
-                    mc.gameSettings.thirdPersonView = 0;
-                }
-            }
-        }
+    @Override
+    public void onEnable() {
+        this.targets.clear();
+        this.degree = 0.0;
+        this.left = true;
+        this.target = null;
+        this.rAnims = 0.0f;
     }
 
     @NMSL
-    private void onMove(EventMove em) {
-        if (MoveUtils.isMoving()) {
-            if (Killaura.target != null && !Killaura.target.isDead || Aura.curTarget != null && !Aura.curTarget.isDead) {
-                if (onlyspeed.getValue() && Client.instance.getModuleManager().getModuleByClass(Speed.class).isEnabled()) {
-                    if (jumpkey.getValue() && mc.gameSettings.keyBindJump.pressed) {
-                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
-                    } else if (!jumpkey.getValue()) {
-                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
-                    }
-                } else if (!onlyspeed.getValue()) {
-                    if (jumpkey.getValue() && mc.gameSettings.keyBindJump.pressed) {
-                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
-                    } else if (!jumpkey.getValue()) {
-                        move(em, MoveUtils.getSpeed(), Aura.curTarget);
-                    }
-                }
-            }
+    public void on3D(final EventRender3D e) {
+        final Killaura ka = (Killaura) Client.instance.getModuleManager().getModuleByClass(Killaura.class);
+        if (this.esp.getValue() && ka.isEnabled()) {
+            this.drawESP(e);
         }
     }
 
-    public void move(EventMove event, double speed, Entity entity) {
-        if (isBlockUnder(entity) && mode.getValue() == TargetStrafeMode.Adaptive) {
-            mc.thePlayer.motionX = mc.thePlayer.motionZ = 0;
-            if (event != null) {
-                event.setX(0);
-                event.setZ(0);
-            }
+    private void drawESP(final EventRender3D render) {
+        this.esp(Killaura.curTarget, render.getPartialTicks(), TargetStrafe.range.getValue());
+    }
+    public static double interpolate(final double current, final double old, final double scale) {
+        return old + (current - old) * scale;
+    }
+
+    @NMSL
+    public void esp(final Entity player, final float partialTicks, final double rad) {
+        float points = 90F;
+        GlStateManager.enableDepth();
+        if (Killaura.curTarget == null) {
             return;
         }
-        if (isBlockUnder(mc.thePlayer) && mode.getValue() == TargetStrafeMode.Adaptive && !Client.instance.getModuleManager().getModuleByClass(Flight.class).isEnabled())
-            direction = !direction;
+        final Minecraft mc = TargetStrafe.mc;
+        if (Minecraft.getMinecraft().thePlayer.onGround) {
+            final Minecraft mc2 = TargetStrafe.mc;
+            this.groundY = (float)Minecraft.getMinecraft().thePlayer.posY;
+        }
+        RenderUtil.drawCircle(player, partialTicks, rad);
+    }
 
-        if (mc.thePlayer.isCollidedHorizontally && mode.getValue() == TargetStrafeMode.Adaptive)
-            direction = !direction;
-
-        float strafe = direction ? 1 : -1;
-        float diff = (float) (speed / (range.getValue() * Math.PI * 2)) * 360 * strafe;
-        float[] rotation = RotationUtil.getNeededRotations(new Vector3d(entity.posX, entity.posY, entity.posZ), new Vector3d(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ));
-
-        rotation[0] += diff;
-        float dir = rotation[0] * (float) (Math.PI / 180F);
-
-        double x = entity.posX - Math.sin(dir) * range.getValue();
-        double z = entity.posZ + Math.cos(dir) * range.getValue();
-
-        float yaw = RotationUtil.getNeededRotations(new Vector3d(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ), new Vector3d(x, entity.posY, z))[0] * (float) (Math.PI / 180F);
-
-        mc.thePlayer.motionX = -MathHelper.sin(yaw) * speed;
-        mc.thePlayer.motionZ = MathHelper.cos(yaw) * speed;
-        if (event != null) {
-            event.setX(mc.thePlayer.motionX);
-            event.setZ(mc.thePlayer.motionZ);
+    @NMSL
+    private void onUpdate(final EventPreUpdate e) {
+        final Client instance3 = Client.instance;
+        Client.instance.getModuleManager();
+        final Killaura ka = (Killaura) Client.instance.getModuleManager().getModuleByClass(Killaura.class);
+        final Client instance4 = Client.instance;
+        Client.instance.getModuleManager();
+        final Speed speed = (Speed) Client.instance.getModuleManager().getModuleByClass(Speed.class);
+        if (ka.isEnabled()) {
+            this.target = Killaura.curTarget;
+        } else {
+            this.target = null;
         }
     }
 
-    private static boolean isBlockUnder(Entity entity) {
-        for (int i = (int) (entity.posY - 1.0); i > 0; --i) {
-            BlockPos pos = new BlockPos(entity.posX,
-                    i, entity.posZ);
-            if (Minecraft.getMinecraft().theWorld.getBlockState(pos).getBlock() instanceof BlockAir)
-                continue;
-            return false;
+    @NMSL(priority = 2)
+    private void onMove(final EventMove e) {
+        if (this.canStrafe()) {
+            final Client instance = Client.instance;
+            Client.instance.getModuleManager();
+            final Speed speedM = (Speed) Client.instance.getModuleManager().getModuleByClass(Speed.class);
+            final double speed = MoveUtils.getSpeed();
+            final Minecraft mc = TargetStrafe.mc;
+            final double n = Minecraft.getMinecraft().thePlayer.posZ - this.target.posZ;
+            final Minecraft mc2 = TargetStrafe.mc;
+            this.degree = Math.atan2(n, Minecraft.getMinecraft().thePlayer.posX - this.target.posX);
+            final double degree = this.degree;
+            double n3;
+            if (this.left) {
+                final double n2 = speed;
+                final Minecraft mc3 = TargetStrafe.mc;
+                n3 = n2 / Minecraft.getMinecraft().thePlayer.getDistanceToEntity(this.target);
+            } else {
+                final double n4 = speed;
+                final Minecraft mc4 = TargetStrafe.mc;
+                n3 = -(n4 / Minecraft.getMinecraft().thePlayer.getDistanceToEntity(this.target));
+            }
+            this.degree = degree + n3;
+            double x = this.target.posX + TargetStrafe.range.getValue() * Math.cos(this.degree);
+            double z = this.target.posZ + TargetStrafe.range.getValue() * Math.sin(this.degree);
+            if ((boolean) this.check.getValue() && this.needToChange(x, z)) {
+                this.left = !this.left;
+                final double degree2 = this.degree;
+                final double n5 = 2.0;
+                double n7;
+                if (this.left) {
+                    final double n6 = speed;
+                    final Minecraft mc5 = TargetStrafe.mc;
+                    n7 = n6 / mc.thePlayer.getDistanceToEntity(this.target);
+                } else {
+                    final double n8 = speed;
+                    final Minecraft mc6 = TargetStrafe.mc;
+                    n7 = -(n8 / mc.thePlayer.getDistanceToEntity(this.target));
+                }
+                this.degree = degree2 + n5 * n7;
+                x = this.target.posX + TargetStrafe.range.getValue() * Math.cos(this.degree);
+                z = this.target.posZ + TargetStrafe.range.getValue() * Math.sin(this.degree);
+            }
+            if (!behind.getValue()) {
+                e.setX(speed * -Math.sin((float) Math.toRadians(MathUtil.toDegree(x, z))));
+                e.setZ(speed * Math.cos((float) Math.toRadians(MathUtil.toDegree(x, z))));
+            } else if (behind.getValue()) {
+                double xPos = target.posX + -Math.sin(Math.toRadians(target.rotationYaw)) * -2;
+                double zPos = target.posZ + Math.cos(Math.toRadians(target.rotationYaw)) * -2;
+                e.setX(speed * -Math.sin(Math.toRadians(getRotations1(xPos, target.posY, zPos)[0])));
+                e.setZ(speed * Math.cos(Math.toRadians(getRotations1(xPos, target.posY, zPos)[0])));
+            }
+        }
+    }
+
+    public static float[] getRotations1(double posX, double posY, double posZ) {
+        EntityPlayerSP player = mc.thePlayer;
+        double x = posX - player.posX;
+        double y = posY - (player.posY + (double) player.getEyeHeight());
+        double z = posZ - player.posZ;
+        double dist = MathHelper.sqrt_double(x * x + z * z);
+        float yaw = (float) (Math.atan2(z, x) * 180.0D / Math.PI) - 90.0F;
+        float pitch = (float) -(Math.atan2(y, dist) * 180.0D / Math.PI);
+        return new float[]{yaw, pitch};
+    }
+
+    public boolean canStrafe() {
+        final Killaura ka = (Killaura)Client.instance.getModuleManager().getModuleByClass(Killaura.class);
+        final Speed speed = (Speed)Client.instance.getModuleManager().getModuleByClass(Speed.class);
+        final Flight Flight = (Flight)Client.instance.getModuleManager().getModuleByClass(Flight.class);
+        return ka.isEnabled() && Killaura.curTarget != null && target != null && (speed.isEnabled() || Flight.isEnabled());
+    }
+
+    public boolean needToChange(final double x, final double z) {
+        final Minecraft mc = TargetStrafe.mc;
+        if (mc.thePlayer.isCollidedHorizontally) {
+            final Minecraft mc2 = TargetStrafe.mc;
+            if (mc.thePlayer.ticksExisted % 2 == 0) {
+                return true;
+            }
+        }
+        final Minecraft mc3 = TargetStrafe.mc;
+        int i = (int)(mc.thePlayer.posY + 4.0);
+        while (i >= 0) {
+            final BlockPos playerPos = new BlockPos(x, i, z);
+            final Minecraft mc4 = TargetStrafe.mc;
+            if (!mc.theWorld.getBlockState(playerPos).getBlock().equals(Blocks.lava)) {
+                final Minecraft mc5 = TargetStrafe.mc;
+                if (!mc.theWorld.getBlockState(playerPos).getBlock().equals(Blocks.fire)) {
+                    final Minecraft mc6 = TargetStrafe.mc;
+                    if (!mc.theWorld.isAirBlock(playerPos)) {
+                        return false;
+                    }
+                    --i;
+                    continue;
+                }
+            }
+            return true;
         }
         return true;
     }
 
-    @NMSL
-    private void onRender(EventRender3D e) {
-        if ((Killaura.target != null && !Killaura.target.isDead || Aura.curTarget != null && !Aura.curTarget.isDead) && render.getValue()) {
-            RenderUtil.drawCircle(Aura.curTarget, e.getPartialTicks(), range.getValue());
-        }
-    }
-
-    enum TargetStrafeMode {
-        Simple,
-        Adaptive
+    static {
+        TargetStrafe.range = new Numbers<Double>("Range", "range", 3.0, 0.1, 6.0, 0.1);
+        TargetStrafe.hue = 0.0f;
     }
 }
 

@@ -395,28 +395,6 @@ public class ItemRenderer
                                         this.doBlockTransformations();
                                         GL11.glTranslatef(-0.05F, this.mc.thePlayer.isSneaking() ? -0.2F : 0.0F, 0.1F);
                                         break;
-                                    case "jello":
-                                        this.func_178096_b(0, 0.0F);
-                                        this.func_178103_d();
-                                        int alpha = (int) Math.min(255, ((System.currentTimeMillis() % 255) > 255/2 ? (Math.abs(Math.abs(System.currentTimeMillis()) % 255 - 255)) : System.currentTimeMillis() % 255)*2);
-                                        float f5 = (f1 > 0.5 ? 1-f1 : f1);
-                                        GlStateManager.translate(0.3f, -0.0f, 0.40f);
-                                        GlStateManager.rotate(0.0f, 0.0f, 0.0f, 1.0f);
-                                        GlStateManager.translate(0, 0.5f, 0);
-
-                                        GlStateManager.rotate(90, 1.0f, 0.0f, -1.0f);
-                                        GlStateManager.translate(0.6f, 0.5f, 0);
-                                        GlStateManager.rotate(-90, 1.0f, 0.0f, -1.0f);
-
-
-                                        GlStateManager.rotate(-10, 1.0f, 0.0f, -1.0f);
-                                        GlStateManager.rotate((- f5) * 10.0f, 10.0f, 10.0f, -9.0f);
-                                        GlStateManager.rotate(10.0f, -1.0f, 0.0f, 0.0f);
-
-                                        GlStateManager.translate(0, 0, -0.5);
-                                        GlStateManager.rotate(mc.thePlayer.isSwingInProgress ? -alpha/5f : 1, 1.0f, -0.0f, 1.0f);
-                                        GlStateManager.translate(0, 0, 0.5);
-                                        break;
                                 }
                             } else {
                                 this.transformFirstPersonItem(f, 0.0F);

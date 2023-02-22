@@ -12,7 +12,7 @@ import net.minecraft.util.BlockPos;
 
 public class Eagle extends Module {
     public Eagle() {
-        super("Eagle", "边界行者", new String[]{"Eagle"}, ModuleType.Movement);
+        super("Eagle", "边界行者", new String[]{"Eagle"}, ModuleType.Ghost);
     }
 
     public Block getBlock(BlockPos pos) {

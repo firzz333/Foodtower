@@ -48,14 +48,15 @@ public class ModuleManager
 
     @Override
     public void init() {
-        registerModule(new Aura());
+        registerModule(new LegitScaffold());
+        registerModule(new KeepSprint());
+        registerModule(new Killaura());
         registerModule(new AntiAim());
         registerModule(new AutoGapple());
         registerModule(new NoClickDelay());
         registerModule(new LegitSpeed());
         registerModule(new HUD());
         registerModule(new Sprint());
-        registerModule(new Killaura());
         registerModule(new Velocity());
         registerModule(new BlockOverlay());
         registerModule(new Criticals());

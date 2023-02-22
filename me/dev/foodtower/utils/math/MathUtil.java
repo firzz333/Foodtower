@@ -6,6 +6,7 @@ Project:foodtower Reborn
 package me.dev.foodtower.utils.math;
 
 import me.dev.foodtower.utils.normal.Helper;
+import net.minecraft.client.Minecraft;
 import net.minecraft.potion.Potion;
 import net.minecraft.util.MathHelper;
 
@@ -28,6 +29,11 @@ public class MathUtil {
             max = d;
         }
         return ThreadLocalRandom.current().nextDouble(min, max);
+    }
+
+    public static float toDegree(double x, double z) {
+        double n = z - Minecraft.getMinecraft().thePlayer.posZ;
+        return (float)(Math.atan2(n, x - Minecraft.getMinecraft().thePlayer.posX) * 180.0 / 3.141592653589793) - 90.0f;
     }
 
     public static double round(double in, int places) {

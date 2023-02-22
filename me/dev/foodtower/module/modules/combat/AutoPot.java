@@ -81,7 +81,7 @@ public class AutoPot extends Module {
         if (Client.instance.getModuleManager().getModuleByClass(Scaffold.class).isEnabled())
             return;
 
-        if (Killaura.target != null || Aura.curTarget != null) {
+        if (Killaura.curTarget != null) {
             rotated = false;
             timer.reset();
             return;

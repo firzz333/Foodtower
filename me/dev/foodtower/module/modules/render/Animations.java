@@ -28,6 +28,6 @@ public class Animations extends Module {
     }
 
     public enum renderMode {
-        Old, Vanilla, Exhibition, Flux, Jello
+        Old, Vanilla, Exhibition, Flux
     }
 }

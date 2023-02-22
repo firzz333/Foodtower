@@ -10,7 +10,6 @@ import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventRender2D;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
-import me.dev.foodtower.module.modules.combat.Aura;
 import me.dev.foodtower.module.modules.combat.Killaura;
 import me.dev.foodtower.utils.math.MathUtils;
 import me.dev.foodtower.utils.normal.RenderUtil;
@@ -19,17 +18,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TargetHUD extends Module {
     static float hurtPercent = 0;
@@ -73,9 +68,9 @@ public class TargetHUD extends Module {
 
     @NMSL
     public void onRender2D(EventRender2D event) {
-        EntityLivingBase target = Aura.curTarget;
+        EntityLivingBase target = Killaura.curTarget;
         if (this.mode.getValue() == TargetMode.ETB) {
-            if (target == null || !(target instanceof EntityPlayer) || mc.theWorld.getEntityByID(target.getEntityId()) == null || mc.theWorld.getEntityByID(target.getEntityId()).getDistanceSqToEntity(mc.thePlayer) > Aura.range.getValue()) {
+            if (target == null || !(target instanceof EntityPlayer) || mc.theWorld.getEntityByID(target.getEntityId()) == null || mc.theWorld.getEntityByID(target.getEntityId()).getDistanceSqToEntity(mc.thePlayer) > 100 || !Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
                 return;
             }
             hurtPercent = target.hurtTime;

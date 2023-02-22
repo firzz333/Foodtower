@@ -7,14 +7,20 @@ package me.dev.foodtower.module.modules.movement;
 
 import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventMove;
+import me.dev.foodtower.api.events.EventPacketSend;
 import me.dev.foodtower.api.events.EventPreUpdate;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
 import me.dev.foodtower.utils.normal.MoveUtils;
+import me.dev.foodtower.utils.normal.PacketUtils;
 import me.dev.foodtower.value.Mode;
 import me.dev.foodtower.value.Numbers;
 import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.network.play.client.C07PacketPlayerDigging;
+import net.minecraft.network.play.server.S12PacketEntityVelocity;
 import net.minecraft.potion.Potion;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.MovementInput;
 import org.lwjgl.input.Keyboard;
 
@@ -23,11 +29,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 public class Speed extends Module {
-    public Mode mode = new Mode("Mode", "mode", SpeedMode.values(), SpeedMode.Hypixel);
-    private final Numbers<Double> HypixelJumpHight = new Numbers<>("HypixelJumpHight", "HypixelJumpHight", 0.42, 0.0, 1.0, 0.01);
-    private final Numbers<Double> HypixelBoost = new Numbers<>("HypixelBoostSpeed", "HypixelBoostSpeed", 0.1, 0.0, 0.4, 0.1);
+    public Mode mode = new Mode("Mode", "mode", SpeedMode.values(), SpeedMode.NCPBhop);
+    private Numbers<Double> customSpeedBoost = new Numbers<>("HypixelBoost", "hypixelboost", 0.1, 0.0, 0.4, 0.1);
     private int level = 1;
-    private double moveSpeed = 0.2873;
+    public double moveSpeed = 0.2873;
     private double lastDist;
     private int timerDelay;
 
@@ -39,33 +44,53 @@ public class Speed extends Module {
 
     @NMSL
     private void onUpdate(EventPreUpdate e) {
-        if (mode.getValue() == SpeedMode.Hypixel) {
-            if (mc.thePlayer.onGround && MoveUtils.isMoving()) {
-                mc.thePlayer.jump();
-                mc.thePlayer.motionY = HypixelJumpHight.getValue();
-                double oldMotionX = mc.thePlayer.motionX;
-                double oldMotionZ = mc.thePlayer.motionZ;
-                MoveUtils.strafe(MoveUtils.getSpeed() * 1.01f);
-                mc.thePlayer.motionX = (mc.thePlayer.motionX * 1 + oldMotionX * 2) / 3;
-                mc.thePlayer.motionZ = (mc.thePlayer.motionZ * 1 + oldMotionZ * 2) / 3;
-                if (MoveUtils.getSpeed() < 0.47) {
-                    double watchdogMultiplier = 0.47 / (MoveUtils.getSpeed() + 0.001);
-                    mc.thePlayer.motionX *= watchdogMultiplier;
-                    mc.thePlayer.motionZ *= watchdogMultiplier;
-                }
-                if (mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
-                    mc.thePlayer.motionX *= (1.0 + HypixelBoost.getValue() * (mc.thePlayer.getActivePotionEffect(Potion.moveSpeed).getAmplifier() + 1));
-                    mc.thePlayer.motionZ *= (1.0 + HypixelBoost.getValue() * (mc.thePlayer.getActivePotionEffect(Potion.moveSpeed).getAmplifier() + 1));
-                }
-            }
-        } else if (mode.getValue() == SpeedMode.Jump) {
-            if (mc.thePlayer.onGround && MoveUtils.isMoving()) {
-                mc.thePlayer.jump();
-            }
-        } else if (mode.getValue() == SpeedMode.NCPBhop) {
-            if (mc.thePlayer.onGround && MoveUtils.isMoving()) {
-                mc.thePlayer.motionY = 0.2;
-                MoveUtils.strafe(0.1);
+        if (MoveUtils.isMoving()) {
+            switch (mode.getValue().toString().toLowerCase()) {
+                case "hypixellatest":
+                    PacketUtils.sendPacketNoEvent(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.STOP_DESTROY_BLOCK, new BlockPos(-1, -1, -1), EnumFacing.UP));
+
+                    if (mc.thePlayer.onGround) {
+                        MoveUtils.strafe(MoveUtils.defaultSpeed());
+                        mc.thePlayer.jump();
+                        MoveUtils.strafe(MoveUtils.getSpeed() * 1.005);
+
+                        if (MoveUtils.getSpeed() < 0.43) {
+                            MoveUtils.strafe(0.43);
+                        }
+                    } else {
+                        if (mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
+                            mc.thePlayer.motionX *= (1.0003 + 0.0015 * customSpeedBoost.getValue() * (mc.thePlayer.getActivePotionEffect(Potion.moveSpeed).getAmplifier() + 1));
+                            mc.thePlayer.motionZ *= (1.0003 + 0.0015 * customSpeedBoost.getValue() * (mc.thePlayer.getActivePotionEffect(Potion.moveSpeed).getAmplifier() + 1));
+                        }
+
+                        double oldMotionX = mc.thePlayer.motionX;
+                        double oldMotionZ = mc.thePlayer.motionZ;
+
+                        MoveUtils.strafe(MoveUtils.getSpeed());
+                        mc.thePlayer.motionX = (mc.thePlayer.motionX + oldMotionX * 5) / 6;
+                        mc.thePlayer.motionZ = (mc.thePlayer.motionZ + oldMotionZ * 5) / 6;
+                    }
+                    break;
+                case "dcj":
+                    if (mc.thePlayer.onGround) {
+                        mc.thePlayer.motionY = 0.37;
+                    }
+
+                    if (!mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
+                        mc.thePlayer.motionX *= 4;
+                        mc.thePlayer.motionZ *= 4;
+                        MoveUtils.strafe(MoveUtils.getBaseMoveSpeed() * 2.4);
+                    } else if (mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
+                        mc.thePlayer.motionX *= 4;
+                        mc.thePlayer.motionZ *= 4;
+                        MoveUtils.strafe(MoveUtils.getBaseMoveSpeed() * 2.8);
+                    }
+                    break;
+                case "jump":
+                    if (mc.thePlayer.onGround) {
+                        mc.thePlayer.jump();
+                    }
+                    break;
             }
         }
     }
@@ -108,10 +133,12 @@ public class Speed extends Module {
             lastDist = Math.sqrt(xDist * xDist + zDist * zDist);
             ++timerDelay;
             timerDelay %= 5;
+
             if (timerDelay != 0) {
                 mc.timer.timerSpeed = 1F;
             } else {
                 if (MoveUtils.isMoving()) mc.timer.timerSpeed = 32767F;
+
                 if (MoveUtils.isMoving()) {
                     mc.timer.timerSpeed = 1.3F;
                     mc.thePlayer.motionX *= 1.0199999809265137;
@@ -119,6 +146,7 @@ public class Speed extends Module {
                 }
             }
             if (mc.thePlayer.onGround && MoveUtils.isMoving()) level = 2;
+
             if (round(mc.thePlayer.posY - (double) ((int) mc.thePlayer.posY)) == round(0.138)) {
                 EntityPlayerSP thePlayer = mc.thePlayer;
                 thePlayer.motionY -= 0.08;
@@ -148,6 +176,7 @@ public class Speed extends Module {
             float forward = MovementInput.moveForward;
             float strafe = MovementInput.moveStrafe;
             float yaw = mc.thePlayer.rotationYaw;
+
             if (forward == 0.0f && strafe == 0.0f) {
                 e.setX(0.0);
                 e.setZ(0.0);
@@ -170,6 +199,7 @@ public class Speed extends Module {
             e.setX((double) forward * moveSpeed * mx2 + (double) strafe * moveSpeed * mz2);
             e.setZ((double) forward * moveSpeed * mz2 - (double) strafe * moveSpeed * mx2);
             mc.thePlayer.stepHeight = 0.6F;
+
             if (forward == 0.0F && strafe == 0.0F) {
                 e.setX(0.0);
                 e.setZ(0.0);
@@ -178,6 +208,6 @@ public class Speed extends Module {
     }
 
     enum SpeedMode {
-        NCPBhop, Hypixel, Jump
+        NCPBhop, DCJ, HypixelLatest, Jump
     }
 }

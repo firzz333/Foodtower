@@ -1,325 +1,270 @@
-/*
-Author:SuMuGod
-Date:2022/7/10 4:12
-Project:foodtower Reborn
-*/
 package me.dev.foodtower.module.modules.combat;
+
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 import me.dev.foodtower.Client;
 import me.dev.foodtower.api.NMSL;
-import me.dev.foodtower.api.events.EventPostUpdate;
-import me.dev.foodtower.api.events.EventPreUpdate;
-import me.dev.foodtower.api.events.EventRender2D;
-import me.dev.foodtower.api.events.EventRender3D;
+import me.dev.foodtower.api.events.*;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
-import me.dev.foodtower.module.modules.movement.Scaffold;
-import me.dev.foodtower.module.modules.world.BedNuker;
 import me.dev.foodtower.module.modules.world.Teams;
 import me.dev.foodtower.other.FriendManager;
-import me.dev.foodtower.utils.math.MathUtils;
-import me.dev.foodtower.utils.math.RotationUtil;
+import me.dev.foodtower.utils.math.MathUtil;
 import me.dev.foodtower.utils.math.TimerUtil;
 import me.dev.foodtower.utils.normal.Helper;
 import me.dev.foodtower.utils.normal.RenderUtil;
 import me.dev.foodtower.value.Mode;
 import me.dev.foodtower.value.Numbers;
 import me.dev.foodtower.value.Option;
-import net.minecraft.client.Minecraft;
+import net.minecraft.network.play.client.C07PacketPlayerDigging;
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
+import org.lwjgl.opengl.GL11;
+
+import net.minecraft.client.gui.GuiGameOver;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.boss.EntityDragon;
+import net.minecraft.entity.monster.EntityGhast;
+import net.minecraft.entity.monster.EntityGolem;
 import net.minecraft.entity.monster.EntityMob;
+import net.minecraft.entity.monster.EntitySlime;
 import net.minecraft.entity.passive.EntityAnimal;
+import net.minecraft.entity.passive.EntityBat;
+import net.minecraft.entity.passive.EntitySquid;
+import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C02PacketUseEntity;
-import net.minecraft.network.play.client.C07PacketPlayerDigging;
-import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
-import net.minecraft.util.*;
-import org.lwjgl.input.Keyboard;
-
-import java.awt.*;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import net.minecraft.util.MathHelper;
 
 public class Killaura extends Module {
-    public Mode<Enum<AuraMode>> mode = new Mode<>("Mode", "Mode", AuraMode.values(), AuraMode.Switch);
-    public static Mode<Enum<RotMode>> rotation = new Mode<>("Rotation", "Rotation", RotMode.values(), RotMode.Basic);
-    public static Mode<Enum<BlockMode>> blockmode = new Mode<>("AutoBlockMode", "AutoBlockMode", BlockMode.values(), BlockMode.Packet);
+
+    public static EntityLivingBase curTarget;
+    private List<Entity> targets = new ArrayList();
+    private int index;
     public static float[] rotations;
-    public static EntityLivingBase target;
-    public static boolean blocking;
-    public static boolean attacking;
-    double yPos;
-    boolean direction = true;
-    TimerUtil espTimer = new TimerUtil();
-    private final Numbers<Double> crack = new Numbers<>("CrackSize", "CrackSize", 1.0, 0.0, 5.0, 0.1);
-    private final Numbers<Double> switchDelay = new Numbers<>("Switchdelay", "switchdelay", 11.0, 0.0, 50.0, 1.0);
-    private final Numbers<Double> aps = new Numbers<>("CPS", "CPS", 10.0, 1.0, 20.0, 0.5);
-    private final Numbers<Double> reach = new Numbers<>("Reach", "Reach", 4.5, 1.0, 6.0, 0.1);
-    private static final Option<Boolean> autoBlock = new Option<>("Autoblock", "Autoblock", true);
-    private final Option<Boolean> esp = new Option<>("DrawESP", "DrawESP", true);
-    private final Option<Boolean> players = new Option<>("Players", "Players", true);
-    private final Option<Boolean> animals = new Option<>("Animals", "Animals", true);
-    private final Option<Boolean> mobs = new Option<>("Mobs", "Mobs", true);
-    private final Option<Boolean> invis = new Option<>("Invisibles", "Invisibles", false);
-    public Option<Boolean> matrix = new Option<>("Matrix", "Matrix", false);
-    public List<EntityLivingBase> targets = new ArrayList<>();
-    public TimerUtil timer = new TimerUtil(), swtichTimer = new TimerUtil();
+    private Mode<Enum> mode = new Mode<Enum>("Mode", "mode", AuraMode.values(), AuraMode.Switch);
+    private Mode<Enum> attacktime = new Mode<>("AttackMode", "attackmode", attackMode.values(), attackMode.Post);
+    private Numbers<Double> cps = new Numbers<Double>("CPS", "cps", 10.0, 1.0, 20.0, 0.5);
+    public static Numbers<Double> range = new Numbers<Double>("Range", "range", 4.5, 1.0, 6.0, 0.1);
+    private Numbers<Double> switchDelay = new Numbers<Double>("SwitchDelay", "switchdelay", 500.0, 100.0, 5000.0, 100.0);
+    private Option<Boolean> rot = new Option<Boolean>("Rotation", "rotation", true);
+    private Option<Boolean> esp = new Option<Boolean>("ESP", "esp", false);
+    private Option<Boolean> autoblock = new Option<Boolean>("Autoblock", "autoblock", true);
+    private Option<Boolean> random = new Option<>("RandomCPS", "ramdomcps", false);
+    private Option<Boolean> players = new Option<Boolean>("Players", "players", true);
+    private Option<Boolean> friend = new Option<Boolean>("FriendFliter", "friendfliter", true);
+    private Option<Boolean> animals = new Option<Boolean>("Animals", "animals", true);
+    private Option<Boolean> mobs = new Option<Boolean>("Mobs", "mobs", false);
+    private Option<Boolean> invis = new Option<Boolean>("Invisibles", "invisibles", false);
+    private Option<Boolean> death = new Option<Boolean>("DeathCheck", "deathcheck", true);
+
+    public static boolean isBlocking;
+    private Comparator<Entity> angleComparator = Comparator.comparingDouble(e2 -> e2.getDistanceToEntity(mc.thePlayer));
+
+    private TimerUtil attackTimer = new TimerUtil();
+
+    private TimerUtil switchTimer = new TimerUtil();
+
+    private Object texture;
+    float anim = 100;
 
     public Killaura() {
-        super("KillAura", "戮死光环", new String[]{"ka"}, ModuleType.Combat);
-        setColor(new Color(255, 255, 255).getRGB());
-        setKey(Keyboard.KEY_R);
-    }
-
-    @NMSL
-    private void onPre(EventPreUpdate e) {
-        if (Client.instance.getModuleManager().getModuleByClass(Scaffold.class).isEnabled() || Client.instance.getModuleManager().getModuleByClass(BedNuker.class).isEnabled() || mc.thePlayer.isDead || mc.thePlayer.isSpectator()) {
-            return;
-        }
-        if (targets.isEmpty()) {
-            return;
-        }
-        int crackSize = this.crack.getValue().intValue();
-        target = targets.get(0);
-        rotations = getRotationsToEnt(target);
-        switch (rotation.getValue().toString()) {
-            case "Basic":
-                rotations[0] += Math.abs(target.posX - target.lastTickPosX) - Math.abs(target.posZ - target.lastTickPosZ);
-                rotations[1] += Math.abs(target.posY - target.lastTickPosY);
-                break;
-            case "Dynamic":
-                rotations[0] += MathUtils.getRandomInRange(1, 5);
-                rotations[1] += MathUtils.getRandomInRange(1, 5);
-                break;
-            case "Prediction":
-                rotations[0] = (float) (rotations[0] + ((Math.abs(target.posX - target.lastTickPosX) - Math.abs(target.posZ - target.lastTickPosZ)) * (2 / 3)) * 2);
-                rotations[1] = (float) (rotations[1] + ((Math.abs(target.posY - target.lastTickPosY) - Math.abs(target.getEntityBoundingBox().minY - target.lastTickPosY)) * (2 / 3)) * 2);
-                break;
-            case "Resolver":
-                if (target.posY < 0) {
-                    rotations[1] = 1;
-                } else if (target.posY > 255) {
-                    rotations[1] = 90;
-                }
-                if (Math.abs(target.posX - target.lastTickPosX) > 0.50 || Math.abs(target.posZ - target.lastTickPosZ) > 0.50) {
-                    target.setEntityBoundingBox(new AxisAlignedBB(target.posX, target.posY, target.posZ, target.lastTickPosX, target.lastTickPosY, target.lastTickPosZ));
-                    Helper.sendMessage("resloved target hitbox at " + target.posX + "," + target.posY + "," + target.posZ);
-                }
-                break;
-            case "Smooth":
-                float sens = RotationUtil.getSensitivityMultiplier();
-
-                rotations[0] = RotationUtil.smoothRotation(mc.thePlayer.rotationYaw, rotations[0], 360);
-                rotations[1] = RotationUtil.smoothRotation(mc.thePlayer.rotationPitch, rotations[1], 90);
-
-                rotations[0] = Math.round(rotations[0] / sens) * sens;
-                rotations[1] = Math.round(rotations[1] / sens) * sens;
-                break;
-            case "None":
-                break;
-        }
-        if (matrix.getValue()) {
-            rotations[0] = rotations[0] + MathUtils.getRandomFloat(1.98f, -1.98f);
-        }
-        e.setYaw(rotations[0]);
-        e.setPitch(rotations[1]);
-        mc.thePlayer.rotationYawHead = mc.thePlayer.renderYawOffset = rotations[0];
-
-        attacking = true;
-        if (timer.hasReached(1000 / (aps.getValue()))) {
-            if (target.getHealth() >= 0) {
-                mc.thePlayer.swingItem();
-                mc.thePlayer.sendQueue.addToSendQueue(new C02PacketUseEntity(target, C02PacketUseEntity.Action.ATTACK));
-                int i2 = 0;
-                while (i2 < crackSize && target != null) {
-                    mc.effectRenderer.emitParticleAtEntity(target, EnumParticleTypes.CRIT);
-                    mc.effectRenderer.emitParticleAtEntity(target, EnumParticleTypes.CRIT_MAGIC);
-                    i2++;
-                }
-                if (target != null && !targets.isEmpty() && target.getHealth() <= 0) {
-                    sortTargets();
-                    if (target != null && !targets.isEmpty()) {
-                        target = targets.get(0);
-                    }
-                }
-            }
-            timer.reset();
-        }
-    }
-
-    @NMSL
-    public void onRenderWorld(EventRender3D e) {
-        if (target != null && esp.getValue()) {
-            RenderUtil.drawShadow(target, e.getPartialTicks(), (float) yPos, direction);
-            RenderUtil.drawCircle(target, e.getPartialTicks(), (float) yPos);
-        }
-    }
-
-    @NMSL
-    private void onRender2D(EventRender2D e) {
-        if (espTimer.delay(10)) {
-            if (direction) {
-                yPos += 0.03;
-                if (2 - yPos < 0.02) {
-                    direction = false;
-                }
-            } else {
-                yPos -= 0.03;
-                if (yPos < 0.02) {
-                    direction = true;
-                }
-            }
-            espTimer.reset();
-        }
-    }
-
-
-    @NMSL
-    private void onPost(EventPostUpdate e) {
-        sortTargets();
-        this.setSuffix(mode.getValue());
-        if (Client.instance.getModuleManager().getModuleByClass(Scaffold.class).isEnabled() || Client.instance.getModuleManager().getModuleByClass(BedNuker.class).isEnabled() || mc.thePlayer.isDead || mc.thePlayer.isSpectator())
-            return;
-        if (!targets.isEmpty()) {
-            if (mode.getValue() == AuraMode.Switch && swtichTimer.hasReached(switchDelay.getValue().longValue())) {
-                swtichTimer.reset();
-            }
-            if (autoBlock.getValue() && mc.thePlayer.getItemInUse() == null) {
-                if (!(mc.thePlayer.getHeldItem().getItem() instanceof ItemSword) || mc.thePlayer.getHeldItem().getItem() == null) {
-                    return;
-                }
-                if (mc.thePlayer.getHeldItem().getItem() instanceof ItemSword && mc.thePlayer.getHeldItem().getItem() != null) {
-                    if (target != null) {
-                        switch (blockmode.getValue().toString()) {
-                            case "Packet":
-                                mc.getNetHandler().addToSendQueue(new C08PacketPlayerBlockPlacement(mc.thePlayer.getHeldItem()));
-                                break;
-                            case "Interact":
-                                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), true);
-                                break;
-                            case "PacketInteract":
-                                mc.getNetHandler().addToSendQueue(new C02PacketUseEntity(target, C02PacketUseEntity.Action.INTERACT));
-                        }
-                        if (Minecraft.playerController.sendUseItem(mc.thePlayer, mc.theWorld, mc.thePlayer.inventory.getCurrentItem())) {
-                            mc.getItemRenderer().resetEquippedProgress2();
-                        }
-                        blocking = true;
-                    } else {
-                        blocking = false;
-                        switch (blockmode.getValue().toString()) {
-                            case "Packet":
-                                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN));
-                                break;
-                            case "Interact":
-                                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-                                Minecraft.playerController.onStoppedUsingItem(mc.thePlayer);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if (targets.isEmpty()) {
-            if (blocking) {
-                switch (blockmode.getValue().toString()) {
-                    case "Packet":
-                        mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN));
-                        break;
-                    case "Interact":
-                        KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-                        Minecraft.playerController.onStoppedUsingItem(mc.thePlayer);
-                        break;
-                }
-            }
-            attacking = false;
-            blocking = false;
-            target = null;
-        }
+        super("Killaura", "戮死光环", new String[] { "ka", "aura", "killa" }, ModuleType.Combat);
     }
 
     @Override
     public void onDisable() {
-        switch (blockmode.getValue().toString()) {
-            case "Packet":
-                mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, BlockPos.ORIGIN, EnumFacing.DOWN));
-                break;
-            case "Interact":
-                KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-                Minecraft.playerController.onStoppedUsingItem(mc.thePlayer);
-                break;
+        this.curTarget = null;
+        this.targets.clear();
+        if (this.autoblock.getValue().booleanValue() && this.hasSword() && this.mc.thePlayer.isBlocking()) {
+            this.unBlock();
         }
-        targets.clear();
-        blocking = false;
-        attacking = false;
-        super.onDisable();
     }
 
     @Override
     public void onEnable() {
-        super.onEnable();
+        this.curTarget = null;
+        this.index = 0;
     }
 
-    public void sortTargets() {
-        targets.clear();
-        for (Entity entity : mc.theWorld.getLoadedEntityList()) {
-            if (entity instanceof EntityLivingBase) {
-                EntityLivingBase entLiving = (EntityLivingBase) entity;
-                if (mc.thePlayer.getDistanceToEntity(entLiving) < reach.getValue() && entLiving != mc.thePlayer && !entLiving.isDead && isValid(entLiving)) {
-                    targets.add(entLiving);
+    public static double random(double min, double max) {
+        Random random = new Random();
+        return min + (double) ((int) (random.nextDouble() * (max - min)));
+    }
+
+    private boolean shouldAttack() {
+        return (random.getValue() && this.attackTimer.hasReached(1000.0 / (this.cps.getValue() + MathUtil.randomDouble(-1.0, 1.0)))) || (!random.getValue() && this.attackTimer.hasReached(1000.0 / (this.cps.getValue())));
+    }
+
+    @NMSL
+    public void onRender(EventRender3D event) {
+        if (Killaura.curTarget == null)
+            return;
+        Color color = new Color(100, 30, 30, 10);
+
+        if (Killaura.curTarget.hurtResistantTime > 0) {
+            color = new Color(190, 30, 30, 30);
+        }
+
+        if (this.esp.getValue()) {
+            for (Entity ent : this.targets) {
+                Color col = new Color(170, 30, 30, 30);
+                if (ent == this.curTarget) {
+                    col = new Color(30, 200, 30, 50);
+                }
+                if (ent.hurtResistantTime > 0) {
+                    col = new Color(255, 30, 30, 50);
+                }
+                RenderUtil.drawFilledESP(ent, col);
+            }
+            Entity player = Killaura.curTarget;
+            float partialTicks = event.getPartialTicks();
+            GL11.glPushMatrix();
+            GL11.glDisable(3553);
+            RenderUtil.startDrawing();
+            GL11.glDisable(2929);
+            GL11.glDepthMask(false);
+            GL11.glLineWidth(4.0f);
+            GL11.glBegin(3);
+            final double pix2 = 6.283185307179586;
+            GL11.glEnd();
+            GL11.glDepthMask(true);
+            GL11.glEnable(2929);
+            RenderUtil.stopDrawing();
+            GL11.glEnable(3553);
+            GL11.glPopMatrix();
+        }
+    }
+
+    private boolean hasSword() {
+        if (mc.thePlayer.inventory.getCurrentItem() != null) {
+            if (mc.thePlayer.inventory.getCurrentItem().getItem() instanceof ItemSword) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    @NMSL
+    private void onTick(EventTick event) {
+        if (this.death.getValue() && mc.thePlayer != null) {
+            if ((!mc.thePlayer.isEntityAlive() || (mc.currentScreen != null && mc.currentScreen instanceof GuiGameOver))) {
+                this.setEnabled(false);
+                Helper.sendMessage("[Auto Disable] Killaura Disabled For Death.");
+                return;
+            }
+            if (mc.thePlayer.ticksExisted <= 1) {
+                this.setEnabled(false);
+                Helper.sendMessage("[Auto Disable] Killaura Disabled For Death.");
+                return;
+            }
+        }
+    }
+
+    private void block() {
+        if (mc.thePlayer.getHeldItem().getItem() instanceof ItemSword) {
+            mc.getNetHandler().addToSendQueue(new C08PacketPlayerBlockPlacement(mc.thePlayer.inventory.getCurrentItem()));
+            if (this.mc.playerController.sendUseItem(this.mc.thePlayer, this.mc.theWorld, this.mc.thePlayer.inventory.getCurrentItem())) {
+                this.mc.getItemRenderer().resetEquippedProgress2();
+            }
+            this.isBlocking = true;
+        }
+    }
+
+    private void unBlock() {
+        if (mc.thePlayer.getHeldItem().getItem() instanceof ItemSword && isBlocking) {
+            mc.getNetHandler().addToSendQueue(new C07PacketPlayerDigging(C07PacketPlayerDigging.Action.RELEASE_USE_ITEM, new BlockPos(-1, -1, -1), EnumFacing.DOWN));
+            this.mc.playerController.onStoppedUsingItem(this.mc.thePlayer);
+            this.isBlocking = false;
+        }
+    }
+
+    @NMSL
+    private void onUpdate(EventPreUpdate event) {
+        this.setSuffix(this.mode.getValue());
+
+        if (curTarget != null)
+            mc.thePlayer.setSprinting(false);
+
+        if (curTarget == null && autoblock.getValue()) {
+            if (hasSword()) {
+                unBlock();
+            }
+        }
+        if (hasSword() && this.curTarget != null && autoblock.getValue() && !isBlocking) {
+            this.block();
+        }
+        this.targets = this.getTargets(range.getValue());
+
+        targets.sort(this.angleComparator);
+
+        if (this.targets.size() > 1 && this.mode.getValue() == AuraMode.Switch) {
+            if (mc.thePlayer.ticksExisted % 2 == 1) {
+
+                if (curTarget == null) {
+                    curTarget = (EntityLivingBase) this.targets.get(0);
+                }
+
+                if (curTarget.hurtTime > 0 || switchTimer.hasReached(200)) {
+                    ++this.index;
+                    this.switchTimer.reset();
                 }
             }
         }
-        targets.sort(Comparator.comparingDouble(mc.thePlayer::getDistanceToEntity));
-    }
 
-    public boolean isValid(EntityLivingBase ent) {
-        if (ent instanceof EntityPlayer && !players.getValue())
-            return false;
-        if (ent instanceof EntityMob && !mobs.getValue())
-            return false;
-        if (ent instanceof EntityAnimal && !animals.getValue())
-            return false;
-        if (ent.isInvisible() && !invis.getValue())
-            return false;
-        if (FriendManager.isFriend(ent.getName()))
-            return false;
-        if (AntiBot.isServerBot(ent))
-            return false;
-        if (Teams.isOnSameTeam(ent))
-            return false;
-        if (ent.getHealth() <= 0)
-            return false;
-        if (ent.isDead) {
-            target = null;
-            return false;
+        if (this.mc.thePlayer.ticksExisted % switchDelay.getValue().intValue() == 0 && this.targets.size() > 1
+                && this.mode.getValue() == AuraMode.Single) {
+
+            if (curTarget.getDistanceToEntity(mc.thePlayer) > range.getValue()) {
+                ++index;
+            } else if (curTarget.isDead) {
+                ++index;
+            }
         }
-        return true;
+
+        if (curTarget != null) {
+            if (attacktime.getValue() == attackMode.Pre && this.shouldAttack()) {
+                if (this.hasSword() && this.mc.thePlayer.isBlocking() && this.isValidEntity(this.curTarget)) {
+                    unBlock();
+                }
+                this.attack();
+                this.attackTimer.reset();
+                if (!mc.thePlayer.isBlocking() && this.hasSword() && autoblock.getValue().booleanValue()) {
+                    this.block();
+                }
+            }
+            curTarget = null;
+        }
+
+        if (!this.targets.isEmpty()) {
+            if (this.index >= this.targets.size()) {
+                this.index = 0;
+            }
+            curTarget = (EntityLivingBase) this.targets.get(this.index);
+            if (rot.getValue()) {
+                rotations = getRotationsToEnt(curTarget);
+                mc.thePlayer.rotationYawHead = getRotationsToEnt(curTarget)[0];
+                mc.thePlayer.renderYawOffset = getRotationsToEnt(curTarget)[0];
+                mc.thePlayer.prevRenderYawOffset = getRotationsToEnt(curTarget)[0];
+                event.setYaw(getRotationsToEnt(curTarget)[0]);
+                event.setPitch(getRotationsToEnt(curTarget)[1]);
+            }
+        }
     }
 
-    enum AuraMode {
-        Switch
-    }
-
-    enum RotMode {
-        Basic,
-        Dynamic,
-        Prediction,
-        Resolver,
-        Smooth,
-        None
-    }
-
-    enum BlockMode {
-        Packet,
-        Interact,
-        PacketInteract,
-    }
-
-    private float[] getRotationsToEnt(Entity ent) {
+    public static float[] getRotationsToEnt(Entity ent) {
         final double differenceX = ent.posX - mc.thePlayer.posX;
         final double differenceY = (ent.posY + ent.height) - (mc.thePlayer.posY + mc.thePlayer.height) - 0.5;
         final double differenceZ = ent.posZ - mc.thePlayer.posZ;
@@ -332,5 +277,83 @@ public class Killaura extends Module {
                 + MathHelper.wrapAngleTo180_float(rotationPitch - mc.thePlayer.rotationPitch);
         return new float[]{finishedYaw, -MathHelper.clamp_float(finishedPitch, -90, 90)};
     }
-}
+    @NMSL
+    private void onUpdatePost(EventPostUpdate e) {
+        if (attacktime.getValue() == attackMode.Pre)
+            return;
+        if (curTarget != null) {
+            if (this.shouldAttack()) {
+                if (this.hasSword() && this.mc.thePlayer.isBlocking() && this.isValidEntity(this.curTarget)) {
+                    unBlock();
+                }
+                this.attack();
+                this.attackTimer.reset();
+            }
+            if (!mc.thePlayer.isBlocking() && this.hasSword() && autoblock.getValue().booleanValue()) {
+                this.block();
+            }
+        }
+    }
 
+    private void attack() {
+        mc.thePlayer.swingItem();
+        mc.thePlayer.onEnchantmentCritical(this.curTarget);
+        mc.thePlayer.sendQueue.addToSendQueue(new C02PacketUseEntity(this.curTarget, C02PacketUseEntity.Action.ATTACK));
+    }
+
+    public List<Entity> getTargets(Double value) {
+        return mc.theWorld.loadedEntityList.stream()
+                .filter(e -> (double) mc.thePlayer.getDistanceToEntity((Entity) e) <= value && isValidEntity((Entity) e))
+                .collect(Collectors.toList());
+    }
+
+    private boolean isValidEntity(Entity ent) {
+
+        if (ent == mc.thePlayer)
+            return false;
+
+        if (mc.thePlayer.getDistanceToEntity(ent) > range.getValue())
+            return false;
+
+        if (ent.isInvisible() && !invis.getValue())
+            return false;
+
+        if (!ent.isEntityAlive())
+            return false;
+
+        if (FriendManager.isFriend(ent.getName()))
+            return false;
+
+        if (ent instanceof EntityPlayer && FriendManager.isFriend(ent.getDisplayName().getUnformattedText())
+                && this.friend.getValue())
+            return false;
+
+        if ((ent instanceof EntityMob || ent instanceof EntityGhast || ent instanceof EntityGolem
+                || ent instanceof EntityDragon || ent instanceof EntitySlime) && mobs.getValue())
+            return true;
+
+        if ((ent instanceof EntitySquid || ent instanceof EntityBat || ent instanceof EntityVillager)
+                && animals.getValue())
+            return true;
+
+        if (ent instanceof EntityAnimal && animals.getValue())
+            return true;
+
+        AntiBot ab = (AntiBot) Client.instance.getModuleManager().getModuleByClass(AntiBot.class);
+        if (AntiBot.isServerBot(ent))
+            return false;
+
+        if (ent instanceof EntityPlayer && players.getValue() && !Teams.isOnSameTeam(ent))
+            return true;
+
+        return false;
+    }
+
+    static enum AuraMode {
+        Switch, Single,
+    }
+
+    enum attackMode {
+        Pre, Post
+    }
+}
