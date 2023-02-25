@@ -8,8 +8,7 @@ package me.dev.foodtower.api.events;
 import me.dev.foodtower.api.Event;
 import net.minecraft.network.Packet;
 
-public class EventPacketSend
-        extends Event {
+public class EventPacketSend extends Event {
     private Packet packet;
 
     public EventPacketSend(Packet packet) {

@@ -41,7 +41,8 @@ public class Flight
 
         if (stages == 0) {
             if (ticks == 1) {
-                DamageUtils.hypixelDamage();
+                DamageUtils damageUtils = new DamageUtils();
+                damageUtils.damagePlayer(1);
                 mc.thePlayer.motionY = 0.2469883648888012144;
             } else if (ticks == 12) {
                 mc.thePlayer.setPosition(mc.thePlayer.posX, mc.thePlayer.posY - 0.38, mc.thePlayer.posZ);

@@ -331,7 +331,7 @@ public class PlayerControllerMP
         return pos.equals(this.currentBlock) && flag;
     }
 
-    private void syncCurrentPlayItem()
+    public void syncCurrentPlayItem()
     {
         int i = this.mc.thePlayer.inventory.currentItem;
 

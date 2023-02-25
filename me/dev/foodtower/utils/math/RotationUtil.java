@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.Vec3;
@@ -28,6 +29,7 @@ public class RotationUtil {
         Helper.mc.thePlayer.rotationPitch = pitch;
     }
     public static Rotation targetRotation;
+    private static Minecraft mc = Minecraft.getMinecraft();
     private static Random random = new Random();
     private static double x = random.nextDouble();
     private static double y = random.nextDouble();
@@ -43,10 +45,6 @@ public class RotationUtil {
         keepLengt = 0;
         targetRotation = null;
     }
-    public static float getSensitivityMultiplier() {
-        float SENSITIVITY = Minecraft.getMinecraft().gameSettings.mouseSensitivity * 0.6F + 0.2F;
-        return (SENSITIVITY * SENSITIVITY * SENSITIVITY * 8.0F) * 0.15F;
-    }
 
     @NMSL
     public void onTick(final EventTick event) {
@@ -61,6 +59,62 @@ public class RotationUtil {
         if(random.nextGaussian() > 0.8D) y = Math.random();
         if(random.nextGaussian() > 0.8D) z = Math.random();
     }
+
+    public static boolean canEntityBeSeen(Entity e){
+        Vec3 vec1 = new Vec3(mc.thePlayer.posX, mc.thePlayer.posY + mc.thePlayer.getEyeHeight(),mc.thePlayer.posZ);
+
+        AxisAlignedBB box = e.getEntityBoundingBox();
+        Vec3 vec2 = new Vec3(e.posX, e.posY + (e.getEyeHeight()/1.32F),e.posZ);
+        double minx = e.posX - 0.25;
+        double maxx = e.posX + 0.25;
+        double miny = e.posY;
+        double maxy = e.posY + Math.abs(e.posY - box.maxY) ;
+        double minz = e.posZ - 0.25;
+        double maxz = e.posZ + 0.25;
+        boolean see =  mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+        vec2 = new Vec3(maxx,miny,minz);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+        vec2 = new Vec3(minx,miny,minz);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+
+        if(see)
+            return true;
+        vec2 = new Vec3(minx,miny,maxz);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+        vec2 = new Vec3(maxx,miny,maxz);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+
+        vec2 = new Vec3(maxx, maxy,minz);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+
+        if(see)
+            return true;
+        vec2 = new Vec3(minx, maxy,minz);
+
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+        vec2 = new Vec3(minx, maxy,maxz - 0.1);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+        vec2 = new Vec3(maxx, maxy,maxz);
+        see = mc.theWorld.rayTraceBlocks(vec1, vec2) == null? true:false;
+        if(see)
+            return true;
+
+
+        return false;
+    }
+
     public static void setTargetRotation(final Rotation rotation) {
         setTargetRotation(rotation, 0);
     }
@@ -85,6 +139,17 @@ public class RotationUtil {
         }
 
         return from + f;
+    }
+
+    public static float[] rotate(EntityLivingBase ent) {
+
+        final double x = ent.posX - Helper.mc.thePlayer.posX;
+        double y = ent.posY - Helper.mc.thePlayer.posY;
+        final double z = ent.posZ - Helper.mc.thePlayer.posZ;
+        y /= Helper.mc.thePlayer.getDistanceToEntity(ent);
+        final float yaw = (float) (-(Math.atan2(x, z) * 57.29577951308232));
+        final float pitch = (float) (-(Math.asin(y) * 57.29577951308232));
+        return new float[]{yaw, pitch};
     }
 
     public static float[] faceTarget(Entity target, float p_706252, float p_706253, boolean miss) {

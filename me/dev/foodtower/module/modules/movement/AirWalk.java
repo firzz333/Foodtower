@@ -104,7 +104,7 @@ public class AirWalk extends Module {
 
     @NMSL
     private void onUpdate(EventPreUpdate e) {
-        if (!b2) {
+        if (b2) {
             if (((Boolean) this.hurtcheck.getValue()).booleanValue()) {
                 if (timer2.hasReached(this.delay.getValue().doubleValue())) {
                     damagePlayer(1);

@@ -20,7 +20,6 @@ import me.dev.foodtower.utils.math.RotationUtil;
 import me.dev.foodtower.utils.math.gl.GLUtils;
 import me.dev.foodtower.utils.normal.MoveUtils;
 import me.dev.foodtower.utils.normal.RenderUtil;
-import me.dev.foodtower.utils.skid.autunm.entity.EntityValidator;
 import me.dev.foodtower.value.Numbers;
 import me.dev.foodtower.value.Option;
 import net.minecraft.client.Minecraft;

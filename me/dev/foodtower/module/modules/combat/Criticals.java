@@ -6,6 +6,7 @@ Project:foodtower Reborn
 package me.dev.foodtower.module.modules.combat;
 
 import me.dev.foodtower.Client;
+import me.dev.foodtower.api.EventHandle;
 import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventAttack;
 import me.dev.foodtower.api.events.EventPacketSend;
@@ -25,12 +26,12 @@ import java.awt.*;
 public class Criticals extends Module {
     private final Mode mode = new Mode("Mode", "mode", CritMode.values(), CritMode.Packet);
     private final Numbers<Double> delay = new Numbers<>("Delay", "delay", 0.0, 0.0, 500.0, 10.0);
+    private Option<Boolean> ground = new Option<>("GroundCheck", "groundcheck", true);
     private final TimerUtil timer = new TimerUtil();
     boolean edit;
 
     public Criticals() {
         super("Criticals", "重击", new String[]{"crits", "crit"}, ModuleType.Combat);
-        this.setColor(new Color(255, 255, 255).getRGB());
     }
 
     @NMSL
@@ -39,7 +40,15 @@ public class Criticals extends Module {
     }
 
     private boolean canCrit() {
-        return mc.thePlayer.onGround || !mc.thePlayer.isOnLadder() || !mc.thePlayer.isInWeb || !mc.thePlayer.isInWater() || !mc.thePlayer.isInLava() || mc.thePlayer.ridingEntity == null || !Client.instance.getModuleManager().getModuleByClass(Flight.class).isEnabled() || !timer.hasReached(delay.getValue());
+        return !mc.thePlayer.isOnLadder() && !mc.thePlayer.isInWeb && !mc.thePlayer.isInWater() && !mc.thePlayer.isInLava() && mc.thePlayer.ridingEntity == null && !Client.instance.getModuleManager().getModuleByClass(Flight.class).isEnabled() && timer.hasReached(delay.getValue());
+    }
+
+    private boolean groundcheck() {
+        if (ground.getValue()) {
+            if (!mc.thePlayer.onGround) return true;
+        }
+
+        return false;
     }
 
     @Override
@@ -53,13 +62,17 @@ public class Criticals extends Module {
         double y = mc.thePlayer.posY;
         double z = mc.thePlayer.posZ;
 
+        if (groundcheck()) {
+            return;
+        }
+
         if (canCrit()) {
             switch (mode.getValue().toString().toLowerCase()) {
                 case "packet":
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0611257723, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0041102102, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0510020980, z, false));
-                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0121550927, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.11, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0100013579, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.0110013579, z, false));
+                    mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.1100019359, z, false));
                     break;
                 case "hypixel":
                     mc.getNetHandler().addToSendQueue(new C03PacketPlayer.C04PacketPlayerPosition(x, y + 0.11, z, true));
@@ -94,10 +107,10 @@ public class Criticals extends Module {
 
     @NMSL
     private void onPacket(EventPacketSend e) {
-        if (mode.getValue().toString().toLowerCase().equals("edit")) {
-            if (edit) {
-                if (e.getPacket() instanceof C03PacketPlayer) {
-                    e.setPacket(new C03PacketPlayer.C04PacketPlayerPosition(mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, false));
+        if (e.getPacket() instanceof C03PacketPlayer) {
+            if (mode.getValue() == CritMode.Edit) {
+                if (edit) {
+                    e.setPacket(new C03PacketPlayer(false));
                 }
                 edit = false;
             }

@@ -73,12 +73,12 @@ public class Speed extends Module {
                     break;
                 case "dcj":
                     if (mc.thePlayer.onGround) {
-                        mc.thePlayer.motionY = 0.37;
+                        mc.thePlayer.motionY = 0.39;
                     }
 
                     if (!mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
-                        mc.thePlayer.motionX *= 4;
-                        mc.thePlayer.motionZ *= 4;
+                        mc.thePlayer.motionX *= 3.7;
+                        mc.thePlayer.motionZ *= 3.7;
                         MoveUtils.strafe(MoveUtils.getBaseMoveSpeed() * 2.4);
                     } else if (mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
                         mc.thePlayer.motionX *= 4;

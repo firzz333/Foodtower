@@ -8,6 +8,7 @@ package me.dev.foodtower.module.modules.movement;
 import me.dev.foodtower.Client;
 import me.dev.foodtower.api.NMSL;
 import me.dev.foodtower.api.events.EventPreUpdate;
+import me.dev.foodtower.api.events.EventTick;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
 

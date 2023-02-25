@@ -134,7 +134,7 @@ public class EntityPlayerSP extends AbstractClientPlayer
     public void onUpdateWalkingPlayer() {
 
         boolean var2;
-        EventPreUpdate e = new EventPreUpdate(this.rotationYaw, this.rotationPitch, this.posY, this.mc.thePlayer.onGround);
+        EventPreUpdate e = new EventPreUpdate(this.rotationYaw, this.rotationPitch, posX, this.posY, posZ, this.mc.thePlayer.onGround);
         EventPostUpdate post = new EventPostUpdate(this.rotationYaw, this.rotationPitch);
         EventBus.getInstance().call(e);
         if (e.isCancelled()) {

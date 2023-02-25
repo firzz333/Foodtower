@@ -322,7 +322,7 @@ public class GuiIngame extends Gui {
             this.overlayPlayerList.updatePlayerList(false);
         }
 
-        EventBus.getInstance().call(new EventRender2D(partialTicks));
+        EventBus.getInstance().call(new EventRender2D(scaledresolution, partialTicks));
         GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
         GlStateManager.disableLighting();
         GlStateManager.enableAlpha();

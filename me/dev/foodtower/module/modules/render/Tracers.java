@@ -15,6 +15,7 @@ import me.dev.foodtower.utils.math.MathUtil;
 import me.dev.foodtower.utils.normal.RenderUtil;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import org.lwjgl.opengl.GL11;
 

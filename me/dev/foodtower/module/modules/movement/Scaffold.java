@@ -5,63 +5,62 @@ Project:foodtower Reborn
 */
 package me.dev.foodtower.module.modules.movement;
 
-import me.dev.foodtower.Client;
 import me.dev.foodtower.api.NMSL;
-import me.dev.foodtower.api.events.EventPostUpdate;
-import me.dev.foodtower.api.events.EventPreUpdate;
-import me.dev.foodtower.api.events.EventRender2D;
+import me.dev.foodtower.api.events.*;
 import me.dev.foodtower.module.Module;
 import me.dev.foodtower.module.ModuleType;
-import me.dev.foodtower.module.modules.render.HUD;
 import me.dev.foodtower.ui.font.FontManager;
-import me.dev.foodtower.utils.math.Rotation;
-import me.dev.foodtower.utils.normal.Helper;
+import me.dev.foodtower.utils.math.PositionUtils;
+import me.dev.foodtower.utils.math.SmoothRotationObject;
+import me.dev.foodtower.utils.math.TimerUtil;
 import me.dev.foodtower.utils.normal.MoveUtils;
-import me.dev.foodtower.utils.normal.PlayerUtil;
+import me.dev.foodtower.value.Mode;
+import me.dev.foodtower.value.Numbers;
 import me.dev.foodtower.value.Option;
 import net.minecraft.block.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityPlayerSP;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.inventory.GuiInventory;
-import net.minecraft.client.multiplayer.WorldClient;
-import net.minecraft.client.renderer.GLAllocation;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.client.C0APacketAnimation;
-import net.minecraft.stats.StatList;
+import net.minecraft.network.play.client.C0BPacketEntityAction;
 import net.minecraft.util.*;
 import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.GL11;
 
 import java.awt.*;
-import java.nio.FloatBuffer;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Scaffold extends Module {
-    public final static List<Block> invalidBlocks = Arrays.asList(Blocks.enchanting_table, Blocks.furnace, Blocks.carpet, Blocks.crafting_table, Blocks.trapped_chest, Blocks.chest, Blocks.dispenser, Blocks.air, Blocks.water, Blocks.lava, Blocks.flowing_water, Blocks.flowing_lava, Blocks.sand, Blocks.snow_layer, Blocks.torch, Blocks.anvil, Blocks.jukebox, Blocks.stone_button, Blocks.wooden_button, Blocks.lever, Blocks.noteblock, Blocks.stone_pressure_plate, Blocks.light_weighted_pressure_plate, Blocks.wooden_pressure_plate, Blocks.heavy_weighted_pressure_plate, Blocks.stone_slab, Blocks.wooden_slab, Blocks.stone_slab2, Blocks.red_mushroom, Blocks.brown_mushroom, Blocks.yellow_flower, Blocks.red_flower, Blocks.anvil, Blocks.glass_pane, Blocks.stained_glass_pane, Blocks.iron_bars, Blocks.cactus, Blocks.ladder, Blocks.web);
-    static final Option<Boolean> sprint = new Option<>("Sprint", "Sprint", false);
-    private static final Vec3 LIGHT0_POS;
-    private static final Vec3 LIGHT1_POS;
-    private static final Rotation rotation = new Rotation(999.0f, 999.0f);
-    private static final FloatBuffer colorBuffer;
-
-    static {
-        colorBuffer = GLAllocation.createDirectFloatBuffer(16);
-        LIGHT0_POS = new Vec3(0.5, 1.0, -0.5).normalize();
-        LIGHT1_POS = new Vec3(-0.5, 1.0, 0.5).normalize();
-    }
-
-    private final Option<Boolean> tower = new Option<>("Tower", "Tower", false);
-    private BlockData data;
-    private int slot;
-    private int towerTick;
-    private ItemStack currentblock;
+    private final Mode<Enum> rotationMode = new Mode<>("RotationMode", "rotationmode", RotMode.values(), RotMode.Normal);
+    private final Mode<Enum> towerMode = new Mode<Enum>("TowerMode", "towermode", TowMode.values(), TowMode.Vanilla);
+    private final Mode<Enum> itemMode = new Mode<Enum>("ItemMode", "itemmode", ItemMode.values(), ItemMode.Spoof);
+    private final Mode<Enum> placeTiming = new Mode<Enum>("PlaceTiming", "placetiming", PlaceMode.values(), PlaceMode.Post);
+    private final Mode<Enum> eagleMode = new Mode<Enum>("EagleMode", "eaglemode", EagleMode.values(), EagleMode.Key);
+    private final Numbers<Double> delayValue = new Numbers<Double>("Delay", "delay", 0.0,0.0,2000.0,1.0);
+    private final Numbers<Double> expand = new Numbers<Double>("Expand", "expand", 0.0,0.0,10.0,0.1);
+    private final Numbers<Double> rotationSpeed = new Numbers<Double>("RotationSpeed", "rotationspeed", 180.0,0.0,180.0,1.0);
+    private final Numbers<Double> slowMoveValue = new Numbers<Double>("SlowMoveSoeed", "slowmovesoeed", 0.2,0.0,0.3,0.01);
+    private final Option<Boolean> tower = new Option<Boolean>("Tower", "tower", true);
+    private final Option<Boolean> moveTower = new Option<Boolean>("MoveTower", "movetower", true);
+    public static final Option<Boolean> sprint = new Option<Boolean>("Sprint", "sprint", false);
+    private final Option<Boolean> eagle = new Option<Boolean>("Eagle", "eagle", false);
+    private final Option<Boolean> down = new Option<Boolean>("Down", "down", false);
+    private final Option<Boolean> swing = new Option<Boolean>("Swing", "swing", true);
+    private final Option<Boolean> keepY = new Option<Boolean>("KeepY", "keepy", false);
+    private final Option<Boolean> swap = new Option<Boolean>("Swap", "swap", true);
+    public static final Option<Boolean> safeWalk = new Option<Boolean>("SafeWalk", "safewalk", false);
+    private final Option<Boolean> slowMove = new Option<Boolean>("SlowMove", "slowmode", false);
+    public static Scaffold Instance;
+    private final TimerUtil delayTimerUtils = new TimerUtil();
+    private final SmoothRotationObject rotationObject = new SmoothRotationObject();
+    public static float saveYaw,savePitch;
+    private BlockData blockData;
+    private int startSlot;
+    private double startY;
 
     public Scaffold() {
         super("Scaffold", "自动搭路", new String[]{"magiccarpet", "blockplacer", "airwalk"}, ModuleType.Movement);
@@ -69,477 +68,644 @@ public class Scaffold extends Module {
         setKey(Keyboard.KEY_G);
     }
 
-    public static boolean isScaffoldBlock(ItemStack itemStack) {
-        if (itemStack == null) return false;
+    @NMSL
+    public void onTick(EventTick e) {
+        if (!sprint.getValue()) mc.thePlayer.setSprinting(false);
 
-        if (itemStack.stackSize <= 0) return false;
-
-        if (!(itemStack.getItem() instanceof ItemBlock)) return false;
-
-        ItemBlock itemBlock = (ItemBlock) itemStack.getItem();
-
-        // whitelist
-        if (itemBlock.getBlock() == Blocks.glass) return true;
-
-        if (invalidBlocks.contains(Block.getBlockFromItem(itemStack.getItem()))) return false;
-
-        // only fullblock
-        return itemBlock.getBlock().isFullBlock();
+        if (placeTiming.getValue().toString().equals("Tick")) {
+            place();
+        }
     }
 
-    public static Vec3 getVec3(BlockPos pos, EnumFacing face) {
-        double x = (double) pos.getX() + 0.5;
-        double y = (double) pos.getY() + 0.5;
-        double z = (double) pos.getZ() + 0.5;
-        if (face == EnumFacing.UP || face == EnumFacing.DOWN) {
-            x += randomNumber(0.3, -0.3);
-            z += randomNumber(0.3, -0.3);
+    @NMSL
+    public void onPreUpdate(EventPreUpdate e) {
+        blockData = null;
+
+        if (rotationMode.getValue().toString().equals("StaticHead")) {
+            saveYaw = mc.thePlayer.rotationYaw;
+            savePitch = 79.44f;
+        } else if (rotationMode.getValue().toString().equals("Head")) {
+            saveYaw = mc.thePlayer.rotationYaw;
+        } else if (rotationMode.getValue().toString().equals("Null")) {
+            savePitch = mc.thePlayer.rotationPitch;
+            saveYaw = mc.thePlayer.rotationYaw;
+        } else if (rotationMode.getValue().toString().equals("Back")) {
+            saveYaw = mc.thePlayer.rotationYaw - 180f;
+        }
+
+        if (rotationSpeed.getValue().equals(180.0)) {
+            e.setYaw(saveYaw);
+            e.setPitch(savePitch);
+
+            mc.thePlayer.rotationYawHead = saveYaw;
+            mc.thePlayer.prevRotationYawHead = saveYaw;
+            mc.thePlayer.renderYawOffset = saveYaw;
+            mc.thePlayer.prevRenderYawOffset = saveYaw;
         } else {
-            y += randomNumber(0.3, -0.3);
+            rotationObject.setWillYawPitch(saveYaw,savePitch);
+            rotationObject.handleRotation(rotationSpeed.getValue());
+            rotationObject.setPlayerRotation(e);
         }
-        if (face == EnumFacing.WEST || face == EnumFacing.EAST) {
-            z += randomNumber(0.3, -0.3);
+
+        if (rotationMode.getValue().toString().equals("Head")) {
+            savePitch = mc.thePlayer.rotationPitch;
+        } else if (rotationMode.getValue().toString().equals("NCP")) {
+            savePitch = mc.thePlayer.rotationPitch;
+            saveYaw = mc.thePlayer.rotationYaw;
         }
-        if (face == EnumFacing.SOUTH || face == EnumFacing.NORTH) {
-            x += randomNumber(0.3, -0.3);
+
+        double x = mc.thePlayer.posX;
+        double z = mc.thePlayer.posZ;
+        double y = mc.thePlayer.posY;
+
+        double yOffset = 1;
+
+        final boolean shouldDown = down.getValue() && Keyboard.isKeyDown(Keyboard.KEY_LCONTROL);
+
+        if (shouldDown) {
+            yOffset = 2;
         }
-        return new Vec3(x, y, z);
-    }
 
-    public static int getBlockSlot() {
-        for (int i = 0; i < 9; ++i) {
-            if (!mc.thePlayer.inventoryContainer.getSlot(i + 36).getHasStack() || !(mc.thePlayer.inventoryContainer.getSlot(i + 36).getStack().getItem() instanceof ItemBlock))
-                continue;
-            return i;
+        if (keepY.getValue()) {
+            if (MoveUtils.isMoving()) {
+                y = startY;
+            } else {
+                startY = mc.thePlayer.posY;
+            }
         }
-        return -1;
-    }
 
-    public static double randomNumber(double max, double min) {
-        return Math.random() * (max - min) + min;
-    }
+        if (!expand.getValue().equals(0.0) && !mc.thePlayer.isCollidedHorizontally && !shouldDown) {
+            double[] coords = getExpandCoords(x,z,mc.thePlayer.movementInput.moveForward,mc.thePlayer.movementInput.moveStrafe,mc.thePlayer.rotationYaw);
+            x = coords[0];
+            z = coords[1];
+        }
 
-    private static FloatBuffer setColorBuffer(final double p_setColorBuffer_0_, final double p_setColorBuffer_2_, final double p_setColorBuffer_4_, final double p_setColorBuffer_6_) {
-        return setColorBuffer((float) p_setColorBuffer_0_, (float) p_setColorBuffer_2_, (float) p_setColorBuffer_4_, (float) p_setColorBuffer_6_);
-    }
+        if (isAirBlock(mc.theWorld.getBlockState(new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - yOffset, mc.thePlayer.posZ)).getBlock())) {
+            x = mc.thePlayer.posX;
+            z = mc.thePlayer.posZ;
+        }
 
-    private static FloatBuffer setColorBuffer(final float p_setColorBuffer_0_, final float p_setColorBuffer_1_, final float p_setColorBuffer_2_, final float p_setColorBuffer_3_) {
-        colorBuffer.clear();
-        colorBuffer.put(p_setColorBuffer_0_).put(p_setColorBuffer_1_).put(p_setColorBuffer_2_).put(p_setColorBuffer_3_);
-        colorBuffer.flip();
-        return colorBuffer;
+        final boolean hasBlock = getInventoryBlockSize() > 0;
+
+        if (hasBlock) {
+            BlockPos underPos = new BlockPos(x, y - yOffset, z);
+            Block underBlock = mc.theWorld.getBlock(underPos);
+
+            final BlockData data = getBlockData(underPos,shouldDown);
+
+            if (isAirBlock(underBlock) && data != null) {
+                if (eagle.getValue() && eagleMode.getValue().toString().equals("Key")) {
+                    mc.thePlayer.movementInput.sneak = true;
+                    mc.thePlayer.setSprinting(false);
+                    MoveUtils.strafe(0);
+                }
+
+                blockData = data;
+                final float[] rotations = getRotationsBlock(data.position, data.face);
+
+                if (rotationMode.getValue().toString().equals("Normal") || rotationMode.getValue().toString().equals("NCP")) {
+                    final float yaw = rotations[0];
+                    final float pitch = rotations[1];
+                    saveYaw = yaw;
+                    savePitch = pitch;
+                } else if (rotationMode.getValue().toString().equals("Head")) {
+                    savePitch = 79.44f;
+                } else if (rotationMode.getValue().toString().equals("Facing")) {
+                    final float yaw = getYawByFacing(data.face);
+                    final float pitch = rotations[1];
+                    saveYaw = yaw;
+                    savePitch = pitch;
+                } else if (rotationMode.getValue().toString().equals("Back")) {
+                    savePitch = rotations[1];
+                }
+            }
+        }
+
+        label:
+        {
+            if (hasBlock && mc.gameSettings.keyBindJump.isKeyDown() && (tower.getValue() || moveTower.getValue())) {
+                if (tower.getValue()) {
+                    if (!moveTower.getValue())
+                        if (MoveUtils.isMoving()) break label;
+                } else if (moveTower.getValue() && !MoveUtils.isMoving()) break label;
+
+                if (!MoveUtils.isMoving()) {
+                    MoveUtils.strafe(0);
+                }
+
+                if (towerMode.getValue().toString().equals("Hypixel") || (moveTower.getValue() && MoveUtils.isMoving())) {
+                    if (mc.thePlayer.onGround) {
+                        int posX0 = (int) mc.thePlayer.posX;
+                        if (mc.thePlayer.posX < posX0) {
+                            posX0 -= 1;
+                        }
+
+                        int posZ0 = (int) mc.thePlayer.posZ;
+                        if (mc.thePlayer.posZ < posZ0) {
+                            posZ0 -= 1;
+                        }
+                        mc.thePlayer.setPosition(posX0 + 0.5, mc.thePlayer.posY, posZ0 + 0.5);
+                    }
+
+                    if (MoveUtils.isOnGround(0.76D) && !MoveUtils.isOnGround(0.75D) && mc.thePlayer.motionY > 0.23D && mc.thePlayer.motionY < 0.25D) {
+                        mc.thePlayer.motionY = ((double) Math.round(mc.thePlayer.posY) - mc.thePlayer.posY);
+                    }
+
+                    if (MoveUtils.isOnGround(1.0E-4D)) {
+                        mc.thePlayer.motionY = 0.41999998688698;
+                    } else if (mc.thePlayer.posY >= (double) Math.round(mc.thePlayer.posY) - 1.0E-4D && mc.thePlayer.posY <= (double) Math.round(mc.thePlayer.posY) + 1.0E-4D) {
+                        mc.thePlayer.motionY = 0;
+                    }
+
+                    if (towerMode.getValue().toString().equals("Hypixel") && !MoveUtils.isMoving()) {
+                        if (mc.theWorld.getBlock(new BlockPos(mc.thePlayer).add(0, 2, 0)) instanceof BlockAir) {
+                            double var3 = e.getY() % 1.0D;
+                            double var4 = MathHelper.floor_double(mc.thePlayer.posY);
+                            double[] offsets = new double[]{0.41999998688698, 0.7531999805212};
+                            if (var3 > 0.419D && var3 < 0.753D) {
+                                e.setY(var4 + offsets[0]);
+                            } else if (var3 > 0.753D) {
+                                e.setY(var4 + offsets[1]);
+                            } else {
+                                e.setY(var4);
+                            }
+
+                            e.setX(e.getX() + (mc.thePlayer.ticksExisted % 2 == 0 ? ThreadLocalRandom.current().nextDouble(0.06D, 0.0625D) : -ThreadLocalRandom.current().nextDouble(0.06D, 0.0625D)));
+                            e.setZ(e.getZ() + (mc.thePlayer.ticksExisted % 2 != 0 ? ThreadLocalRandom.current().nextDouble(0.06D, 0.0625D) : -ThreadLocalRandom.current().nextDouble(0.06D, 0.0625D)));
+                        }
+                    }
+                } else if (towerMode.getValue().toString().equals("Vanilla")) {
+                    mc.thePlayer.motionY = 0.41982;
+                    MoveUtils.strafe(0);
+                } else if (towerMode.getValue().toString().equals("TP")) {
+                    mc.thePlayer.setPosition(mc.thePlayer.posX, mc.thePlayer.posY + 1, mc.thePlayer.posZ);
+
+                    if (!MoveUtils.isOnGround(1)) {
+                        mc.thePlayer.motionY = 0;
+                    }
+
+                    MoveUtils.strafe(0);
+                } else if (towerMode.getValue().toString().equals("Low")) {
+                    if (MoveUtils.isOnGround(0.99)) {
+                        mc.thePlayer.motionY = 0.36;
+                        MoveUtils.strafe(0);
+                    }
+                } else if (towerMode.getValue().toString().equals("Slow")) {
+                    if (MoveUtils.isOnGround(0.114514)) {
+                        mc.thePlayer.jump();
+                        MoveUtils.strafe(0);
+                    }
+                }
+            }
+        }
+
+        if (placeTiming.getValue().toString().equals("Pre")) {
+            place();
+        }
     }
 
     @NMSL
-    public void onPre(EventPreUpdate event) {
-        if (!sprint.getValue()) {
-            mc.thePlayer.setSprinting(false);
-        }
-        if (sprint.getValue() && Helper.onServer("hypixel")) {
-            mc.thePlayer.motionX *= 0.3;
-            mc.thePlayer.motionZ *= 0.3;
-        }
-        EntityPlayerSP player = mc.thePlayer;
-        WorldClient world = mc.theWorld;
-        if (this.getBlockCount() <= 0 && this.getallBlockCount() <= 0) {
-            return;
-        }
-        if (this.getBlockCount() <= 0) {
-            int spoofSlot = this.getBestSpoofSlot();
-            this.getBlock(spoofSlot);
-        }
-        this.data = this.getBlockData(new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1.0, mc.thePlayer.posZ)) == null ? this.getBlockData(new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1.0, mc.thePlayer.posZ).down(1)) : this.getBlockData(new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 1.0, mc.thePlayer.posZ));
-        this.slot = getBlockSlot();
-        this.currentblock = mc.thePlayer.inventoryContainer.getSlot(slot + 36).getStack();
-        if (this.data == null || this.slot == -1 || this.getBlockCount() <= 0 || !(MoveUtils.isMoving() || mc.gameSettings.keyBindJump.isKeyDown())) {
-            return;
-        }
-        if (mc.theWorld.getBlockState(new BlockPos(mc.thePlayer.posX, mc.thePlayer.posY - 0.5, mc.thePlayer.posZ)).getBlock() == Blocks.air) {
-            float rot = 0.0f;
-            if (MovementInput.moveForward > 0.0f) {
-                rot = 180.0f;
-                if (MovementInput.moveStrafe > 0.0f) {
-                    rot = -120.0f;
-                } else if (MovementInput.moveStrafe < 0.0f) {
-                    rot = 120.0f;
-                }
-            } else if (MovementInput.moveForward == 0.0f) {
-                rot = 180.0f;
-                if (MovementInput.moveStrafe > 0.0f) {
-                    rot = -90.0f;
-                } else if (MovementInput.moveStrafe < 0.0f) {
-                    rot = 90.0f;
-                }
-            } else if (MovementInput.moveForward < 0.0f) {
-                if (MovementInput.moveStrafe > 0.0f) {
-                    rot = -45.0f;
-                } else if (MovementInput.moveStrafe < 0.0f) {
-                    rot = 45.0f;
-                }
-            }
-            if (PlayerUtil.isAirUnder(mc.thePlayer) && mc.gameSettings.keyBindJump.isKeyDown() && !PlayerUtil.MovementInput() && this.tower.getValue().booleanValue()) {
-                rot = 180.0f;
-            }
-            rotation.setYaw(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw) - rot);
-            rotation.setPitch(87.5f);
-        }
-        if (rotation.getYaw() != 999.0f) {
-            mc.thePlayer.rotationYawHead = rotation.getYaw();
-            mc.thePlayer.renderYawOffset = rotation.getYaw();
-            event.setYaw(rotation.getYaw());
-        }
-        if (Rotation.getPitch() != 999.0f) {
-//            mc.thePlayer.rotationPitchHead = rotation.getPitch();
-            event.setPitch(Rotation.getPitch());
-        }
-        if (PlayerUtil.isAirUnder(mc.thePlayer) && MoveUtils.isOnGround(1.15) && mc.gameSettings.keyBindJump.isKeyDown() && !PlayerUtil.MovementInput() && this.tower.getValue()) {
-            if (mc.thePlayer.onGround) {
-                mc.thePlayer.isAirBorne = true;
-                mc.thePlayer.triggerAchievement(StatList.jumpStat);
-                towerTick = 0;
-            }
-            int IntPosY = (int) mc.thePlayer.posY;
-            if (mc.thePlayer.posY - IntPosY < 0.05) {
-                mc.thePlayer.setPosition(mc.thePlayer.posX, IntPosY, mc.thePlayer.posZ);
-                mc.thePlayer.motionY = 0.42;
-                towerTick = 1;
-            } else if (towerTick == 1) {
-                mc.thePlayer.motionY = 0.34;
-                towerTick++;
-            } else if (towerTick == 2) {
-                mc.thePlayer.motionY = 0.25;
-                towerTick++;
-            }
-        }
-        if (MoveUtils.isOnGround(1.15) && mc.gameSettings.keyBindJump.isKeyDown() && !PlayerUtil.MovementInput() && this.tower.getValue()) {
-
-        } else if (mc.timer.timerSpeed == 2.1078f) {
-            mc.timer.timerSpeed = 1.0f;
+    public void onMove(EventMove e) {
+        if (slowMove.getValue()) {
+            MoveUtils.setSpeed(e, slowMoveValue.getValue());
         }
     }
 
     @NMSL
-    public void onPost(EventPostUpdate e) {
-        int last = mc.thePlayer.inventory.currentItem;
-        mc.thePlayer.inventory.currentItem = this.slot;
+    public void onPostUpdate(EventPostUpdate e) {
+        if (placeTiming.getValue().toString().equals("Post")) {
+            place();
+        }
+    }
 
-        if (data != null) {
-            if (Minecraft.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.getCurrentEquippedItem(), this.data.getBlockPos(), this.data.getEnumFacing(), getVec3(this.data.getBlockPos(), this.data.getEnumFacing()))) {
-                if (mc.thePlayer.inventory.getStackInSlot(mc.thePlayer.inventory.currentItem).getItem() != null && (mc.thePlayer.inventory.getStackInSlot(mc.thePlayer.inventory.currentItem).getItem() instanceof ItemBlock) && !mc.isSingleplayer()) {
-                    ItemBlock itemblock = (ItemBlock) mc.thePlayer.inventory.getStackInSlot(mc.thePlayer.inventory.currentItem).getItem();
-                }
-                mc.thePlayer.sendQueue.addToSendQueue(new C0APacketAnimation());
+    private void place() {
+        if (getInventoryBlockSize() > 0 && blockData != null) {
+            if (swap.getValue()) {
+                getBlock(getBestSpoofSlot());
             }
-            mc.thePlayer.inventory.currentItem = last;
+
+            if (delayValue.getValue().intValue() == 0 || delayTimerUtils.hasReached(delayValue.getValue())) {
+                final int slot = getBlockFromHotBar();
+                if (slot != -1) {
+                    final boolean sendSneakPacket = eagle.getValue() && eagleMode.getValue().toString().equals("Packet");
+
+                    if (sendSneakPacket) {
+                        mc.getNetHandler().addToSendQueue(new C0BPacketEntityAction(mc.thePlayer,C0BPacketEntityAction.Action.START_SNEAKING));
+                    }
+
+                    final int old = mc.thePlayer.inventory.currentItem;
+                    mc.thePlayer.inventory.currentItem = slot;
+
+                    if (Minecraft.playerController.onPlayerRightClick(mc.thePlayer, mc.theWorld, mc.thePlayer.getCurrentEquippedItem(), blockData.position, blockData.face, PositionUtils.getVec3(blockData.position,blockData.face))) {
+                        if (swing.getValue()) {
+                            mc.thePlayer.swingItem();
+                        } else mc.getNetHandler().addToSendQueue(new C0APacketAnimation());
+                    }
+
+                    if (itemMode.getValue().toString().equals("Spoof")) {
+                        mc.thePlayer.inventory.currentItem = old;
+                    }
+
+                    if (sendSneakPacket) {
+                        mc.getNetHandler().addToSendQueue(new C0BPacketEntityAction(mc.thePlayer,C0BPacketEntityAction.Action.STOP_SNEAKING));
+                    }
+                }
+            }
+        }
+    }
+
+    @NMSL
+    public void on2D(EventRender2D e) {
+        final int width = e.getScaledResolution().getScaledWidth();
+        final int height = e.getScaledResolution().getScaledHeight();
+        final int middleX = width / 2 + 15;
+        final int middleY = height / 2 - 12;
+        final int block = getInventoryBlockSize();
+        if (block != 0) {
+            final ItemStack stackInSlot = mc.thePlayer.inventory.getStackInSlot(getBlockFromHotBar());
+            final String displayName;
+            if (stackInSlot == null) {
+                displayName = "NULL";
+            } else displayName = stackInSlot.getDisplayName();
+            FontManager.F16.drawStringWithShadow((block >= 64 ? EnumChatFormatting.YELLOW : EnumChatFormatting.RED) + "Blocks:" + block + EnumChatFormatting.WHITE + " (" + EnumChatFormatting.GRAY + displayName + EnumChatFormatting.WHITE + ")", middleX - 50, middleY + 20, -1);
+        } else {
+            FontManager.F16.drawStringWithShadow(EnumChatFormatting.RED + "Blocks:" + block + EnumChatFormatting.WHITE + " (" + EnumChatFormatting.GRAY + "NULL" + EnumChatFormatting.WHITE + ")", middleX - 50, middleY + 20, -1);
         }
     }
 
     @Override
     public void onEnable() {
-        this.data = null;
-        this.slot = -1;
-        rotation.setYaw(999.0f);
-        rotation.setPitch(999.0f);
-        this.towerTick = 0;
+        if (itemMode.getValue().toString().equals("Switch")) {
+            startSlot = mc.thePlayer.inventory.currentItem;
+        }
+        startY = mc.thePlayer.posY;
+        super.onEnable();
     }
 
     @Override
     public void onDisable() {
-        rotation.setYaw(999.0f);
-        rotation.setPitch(999.0f);
-        mc.timer.timerSpeed = 1.0f;
+        if (itemMode.getValue().toString().equals("Switch")) {
+            mc.thePlayer.inventory.currentItem = startSlot;
+        }
+        blockData = null;
+        super.onDisable();
     }
 
-    private int getBlocksCount() {
-        int result = 0;
-        int i = 9;
-        while (i < 45) {
-            ItemStack stack = mc.thePlayer.inventoryContainer.getSlot(i).getStack();
-            if (isScaffoldBlock(stack)) {
-                result += stack.stackSize;
+    private float getYawByFacing(EnumFacing facing) {
+        switch (facing) {
+            case DOWN:
+            case UP:
+            case NORTH:
+                return 0;
+            case SOUTH:
+                return 180;
+            case WEST:
+                return -90;
+            case EAST:
+                return 90;
+        }
+
+        return 0.0f;
+    }
+
+    private float[] getRotationsBlock(BlockPos block, EnumFacing face) {
+        double x = (double)block.getX() + 0.5 - mc.thePlayer.posX + (double)face.getFrontOffsetX() / 2.0;
+        double z = (double)block.getZ() + 0.5 - mc.thePlayer.posZ + (double)face.getFrontOffsetZ() / 2.0;
+        double y = (double)block.getY() + 0.5;
+        double d1 = mc.thePlayer.posY + (double)mc.thePlayer.getEyeHeight() - y;
+        double d3 = MathHelper.sqrt_double(x * x + z * z);
+        float yaw = (float)(Math.atan2(z, x) * 180.0 / Math.PI) - 90.0f;
+        float pitch = (float)(Math.atan2(d1, d3) * 180.0 / Math.PI);
+        if (yaw < 0.0f) {
+            yaw += 360.0f;
+        }
+        return new float[]{yaw, pitch};
+    }
+
+    private int getBlockFromHotBar() {
+        int slot = -1;
+
+        for (int i = 0; i < 9; ++i) {
+            ItemStack itemStack = mc.thePlayer.inventory.getStackInSlot(i);
+            if (itemStack == null) continue;
+            if (!isValidItem(itemStack.getItem())) continue;
+            slot = i;
+            break;
+        }
+
+        return slot;
+    }
+
+    private void getBlock(int hotBarSlot) {
+        if (getBlockFromHotBar() == -1) {
+            for (int i = 0; i < 36; ++i) {
+                if (!mc.thePlayer.inventoryContainer.getSlot(i).getHasStack() || mc.currentScreen != null && !(mc.currentScreen instanceof GuiInventory))
+                    continue;
+                ItemStack is = mc.thePlayer.inventoryContainer.getSlot(i).getStack();
+                if (!(is.getItem() instanceof ItemBlock) || !isValidItem(is.getItem())) continue;
+                if (36 + hotBarSlot == i) break;
+
+                swap(i, hotBarSlot);
+
+                break;
             }
-            ++i;
         }
-        return result;
     }
 
-    @NMSL
-    public void on2D(EventRender2D event) {
-        if (!Client.instance.getModuleManager().getModuleByClass(HUD.class).isEnabled()) return;
-        ScaledResolution sr = new ScaledResolution(mc);
-        int width = sr.getScaledWidth();
-        int height = sr.getScaledHeight();
-        int middleX = width / 2;
-        int middleY = height / 2;
-        FontManager.F18.drawString(String.valueOf(getBlockCount() + getallBlockCount()), middleX + 10 - FontManager.F18.getStringWidth(String.valueOf(getBlockCount() + getallBlockCount())) / 2, middleY + 21, new Color(255, 255, 255).getRGB());
-        GL11.glPushMatrix();
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-        if (mc.theWorld != null) {
-            GlStateManager.pushMatrix();
-            GlStateManager.rotate(-30.0f, 0.0f, 1.0f, 0.0f);
-            GlStateManager.rotate(165.0f, 1.0f, 0.0f, 0.0f);
+    private int getInventoryBlockSize() {
+        int final_ = 0;
 
-            GlStateManager.enableLighting();
-            GlStateManager.enableLight(0);
-            GlStateManager.enableLight(1);
-            GlStateManager.enableColorMaterial();
-            GlStateManager.colorMaterial(1032, 5634);
-            final float n = 0.4f;
-            final float n2 = 0.6f;
-            final float n3 = 0.0f;
-            GL11.glLight(16384, 4611, setColorBuffer(LIGHT0_POS.xCoord, LIGHT0_POS.yCoord, LIGHT0_POS.zCoord, 0.0));
-            GL11.glLight(16384, 4609, setColorBuffer(n2, n2, n2, 1.0f));
-            GL11.glLight(16384, 4608, setColorBuffer(0.0f, 0.0f, 0.0f, 1.0f));
-            GL11.glLight(16384, 4610, setColorBuffer(n3, n3, n3, 1.0f));
-            GL11.glLight(16385, 4611, setColorBuffer(LIGHT1_POS.xCoord, LIGHT1_POS.yCoord, LIGHT1_POS.zCoord, 0.0));
-            GL11.glLight(16385, 4609, setColorBuffer(n2, n2, n2, 1.0f));
-            GL11.glLight(16385, 4608, setColorBuffer(0.0f, 0.0f, 0.0f, 1.0f));
-            GL11.glLight(16385, 4610, setColorBuffer(n3, n3, n3, 1.0f));
-            GlStateManager.shadeModel(7424);
-            GL11.glLightModel(2899, setColorBuffer(n, n, n, 1.0f));
-
-            GlStateManager.popMatrix();
+        for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+            if (stack == null) continue;
+            if (!(stack.getItem() instanceof ItemBlock) || !isValidItem(stack.getItem())) continue;
+            final_ += stack.stackSize;
         }
-        GlStateManager.pushMatrix();
-        GlStateManager.disableAlpha();
-        GlStateManager.clear(256);
-        mc.getRenderItem().zLevel = -150.0f;
-        final RenderItem renderItem = mc.getRenderItem();
-        renderItem.renderItemAndEffectIntoGUI(currentblock, width / 2 - 20, height / 2 + 16);
-        mc.getRenderItem().zLevel = 0.0f;
-        GlStateManager.disableBlend();
-        GlStateManager.scale(0.5, 0.5, 0.5);
-        GlStateManager.disableDepth();
-        GlStateManager.disableLighting();
-        GlStateManager.enableDepth();
-        GlStateManager.scale(2.0f, 2.0f, 2.0f);
-        GlStateManager.enableAlpha();
-        GlStateManager.popMatrix();
-        GL11.glPopMatrix();
+
+        return final_;
     }
 
-    private BlockData getBlockData(BlockPos pos) {
-        if (this.isPosSolid(pos.add(0, -1, 0))) {
+    public double[] getExpandCoords(double x, double z, double forward, double strafe, float YAW){
+        BlockPos underPos = new BlockPos(x, mc.thePlayer.posY - 1, z);
+        Block underBlock = mc.theWorld.getBlockState(underPos).getBlock();
+        double xCalc = -999, zCalc = -999;
+        double dist = 0;
+        double expandDist = expand.getValue() * 2;
+        while(!isAirBlock(underBlock)){
+            xCalc = x;
+            zCalc = z;
+            dist ++;
+            if(dist > expandDist){
+                dist = expandDist;
+            }
+            final double cos = Math.cos(Math.toRadians(YAW + 90.0f));
+            final double sin = Math.sin(Math.toRadians(YAW + 90.0f));
+            xCalc += (forward * 0.45 * cos + strafe * 0.45 * sin) * dist;
+            zCalc += (forward * 0.45 * sin - strafe * 0.45 * cos) * dist;
+            if(dist == expandDist){
+                break;
+            }
+            underPos = new BlockPos(xCalc, mc.thePlayer.posY - 1, zCalc);
+            underBlock = mc.theWorld.getBlockState(underPos).getBlock();
+        }
+        return new double[]{xCalc,zCalc};
+    }
+
+    private boolean isAirBlock(Block block) {
+        if (block.getMaterial().isReplaceable()) {
+            return !(block instanceof BlockSnow);
+        }
+
+        return false;
+    }
+
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    private boolean isValidItem(Item item) {
+        if (item instanceof ItemBlock) {
+            ItemBlock iBlock = (ItemBlock)item;
+            Block block = iBlock.getBlock();
+            return !invalidBlocks.contains(block);
+        }
+        return false;
+    }
+
+    public void swap(int slot1, int hotbarSlot) {
+        Minecraft.playerController.windowClick(mc.thePlayer.inventoryContainer.windowId, slot1, hotbarSlot,2, mc.thePlayer);
+    }
+
+    public static int getBestSpoofSlot() {
+        int spoofSlot = 5;
+        for (int i = 36; i < 45; ++i) {
+            if (mc.thePlayer.inventoryContainer.getSlot(i).getHasStack()) continue;
+            spoofSlot = i - 36;
+            break;
+        }
+        return spoofSlot;
+    }
+
+    private BlockData getBlockData(BlockPos pos,boolean down) {
+        if (down) {
+            if (isPosSolid(pos.add(0, 1, 0))) {
+                return new BlockData(pos.add(0, 1, 0), EnumFacing.DOWN);
+            }
+        }
+
+        if (isPosSolid(pos.add(0, -1, 0))) {
             return new BlockData(pos.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos.add(-1, 0, 0))) {
+        if (isPosSolid(pos.add(-1, 0, 0))) {
             return new BlockData(pos.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos.add(1, 0, 0))) {
+        if (isPosSolid(pos.add(1, 0, 0))) {
             return new BlockData(pos.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos.add(0, 0, 1))) {
+        if (isPosSolid(pos.add(0, 0, 1))) {
             return new BlockData(pos.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos.add(0, 0, -1))) {
+        if (isPosSolid(pos.add(0, 0, -1))) {
             return new BlockData(pos.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos1 = pos.add(-1, 0, 0);
-        if (this.isPosSolid(pos1.add(0, -1, 0))) {
+        if (isPosSolid(pos1.add(0, -1, 0))) {
             return new BlockData(pos1.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos1.add(-1, 0, 0))) {
+        if (isPosSolid(pos1.add(-1, 0, 0))) {
             return new BlockData(pos1.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos1.add(1, 0, 0))) {
+        if (isPosSolid(pos1.add(1, 0, 0))) {
             return new BlockData(pos1.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos1.add(0, 0, 1))) {
+        if (isPosSolid(pos1.add(0, 0, 1))) {
             return new BlockData(pos1.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos1.add(0, 0, -1))) {
+        if (isPosSolid(pos1.add(0, 0, -1))) {
             return new BlockData(pos1.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos2 = pos.add(1, 0, 0);
-        if (this.isPosSolid(pos2.add(0, -1, 0))) {
+        if (isPosSolid(pos2.add(0, -1, 0))) {
             return new BlockData(pos2.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos2.add(-1, 0, 0))) {
+        if (isPosSolid(pos2.add(-1, 0, 0))) {
             return new BlockData(pos2.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos2.add(1, 0, 0))) {
+        if (isPosSolid(pos2.add(1, 0, 0))) {
             return new BlockData(pos2.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos2.add(0, 0, 1))) {
+        if (isPosSolid(pos2.add(0, 0, 1))) {
             return new BlockData(pos2.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos2.add(0, 0, -1))) {
+        if (isPosSolid(pos2.add(0, 0, -1))) {
             return new BlockData(pos2.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos3 = pos.add(0, 0, 1);
-        if (this.isPosSolid(pos3.add(0, -1, 0))) {
+        if (isPosSolid(pos3.add(0, -1, 0))) {
             return new BlockData(pos3.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos3.add(-1, 0, 0))) {
+        if (isPosSolid(pos3.add(-1, 0, 0))) {
             return new BlockData(pos3.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos3.add(1, 0, 0))) {
+        if (isPosSolid(pos3.add(1, 0, 0))) {
             return new BlockData(pos3.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos3.add(0, 0, 1))) {
+        if (isPosSolid(pos3.add(0, 0, 1))) {
             return new BlockData(pos3.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos3.add(0, 0, -1))) {
+        if (isPosSolid(pos3.add(0, 0, -1))) {
             return new BlockData(pos3.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos4 = pos.add(0, 0, -1);
-        if (this.isPosSolid(pos4.add(0, -1, 0))) {
+        if (isPosSolid(pos4.add(0, -1, 0))) {
             return new BlockData(pos4.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos4.add(-1, 0, 0))) {
+        if (isPosSolid(pos4.add(-1, 0, 0))) {
             return new BlockData(pos4.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos4.add(1, 0, 0))) {
+        if (isPosSolid(pos4.add(1, 0, 0))) {
             return new BlockData(pos4.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos4.add(0, 0, 1))) {
+        if (isPosSolid(pos4.add(0, 0, 1))) {
             return new BlockData(pos4.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos4.add(0, 0, -1))) {
+        if (isPosSolid(pos4.add(0, 0, -1))) {
             return new BlockData(pos4.add(0, 0, -1), EnumFacing.SOUTH);
         }
-        BlockPos pos19 = pos.add(-2, 0, 0);
-        if (this.isPosSolid(pos1.add(0, -1, 0))) {
+        if (isPosSolid(pos1.add(0, -1, 0))) {
             return new BlockData(pos1.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos1.add(-1, 0, 0))) {
+        if (isPosSolid(pos1.add(-1, 0, 0))) {
             return new BlockData(pos1.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos1.add(1, 0, 0))) {
+        if (isPosSolid(pos1.add(1, 0, 0))) {
             return new BlockData(pos1.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos1.add(0, 0, 1))) {
+        if (isPosSolid(pos1.add(0, 0, 1))) {
             return new BlockData(pos1.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos1.add(0, 0, -1))) {
+        if (isPosSolid(pos1.add(0, 0, -1))) {
             return new BlockData(pos1.add(0, 0, -1), EnumFacing.SOUTH);
         }
-        BlockPos pos29 = pos.add(2, 0, 0);
-        if (this.isPosSolid(pos2.add(0, -1, 0))) {
+        if (isPosSolid(pos2.add(0, -1, 0))) {
             return new BlockData(pos2.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos2.add(-1, 0, 0))) {
+        if (isPosSolid(pos2.add(-1, 0, 0))) {
             return new BlockData(pos2.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos2.add(1, 0, 0))) {
+        if (isPosSolid(pos2.add(1, 0, 0))) {
             return new BlockData(pos2.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos2.add(0, 0, 1))) {
+        if (isPosSolid(pos2.add(0, 0, 1))) {
             return new BlockData(pos2.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos2.add(0, 0, -1))) {
+        if (isPosSolid(pos2.add(0, 0, -1))) {
             return new BlockData(pos2.add(0, 0, -1), EnumFacing.SOUTH);
         }
-        BlockPos pos39 = pos.add(0, 0, 2);
-        if (this.isPosSolid(pos3.add(0, -1, 0))) {
+        if (isPosSolid(pos3.add(0, -1, 0))) {
             return new BlockData(pos3.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos3.add(-1, 0, 0))) {
+        if (isPosSolid(pos3.add(-1, 0, 0))) {
             return new BlockData(pos3.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos3.add(1, 0, 0))) {
+        if (isPosSolid(pos3.add(1, 0, 0))) {
             return new BlockData(pos3.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos3.add(0, 0, 1))) {
+        if (isPosSolid(pos3.add(0, 0, 1))) {
             return new BlockData(pos3.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos3.add(0, 0, -1))) {
+        if (isPosSolid(pos3.add(0, 0, -1))) {
             return new BlockData(pos3.add(0, 0, -1), EnumFacing.SOUTH);
         }
-        BlockPos pos49 = pos.add(0, 0, -2);
-        if (this.isPosSolid(pos4.add(0, -1, 0))) {
+        if (isPosSolid(pos4.add(0, -1, 0))) {
             return new BlockData(pos4.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos4.add(-1, 0, 0))) {
+        if (isPosSolid(pos4.add(-1, 0, 0))) {
             return new BlockData(pos4.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos4.add(1, 0, 0))) {
+        if (isPosSolid(pos4.add(1, 0, 0))) {
             return new BlockData(pos4.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos4.add(0, 0, 1))) {
+        if (isPosSolid(pos4.add(0, 0, 1))) {
             return new BlockData(pos4.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos4.add(0, 0, -1))) {
+        if (isPosSolid(pos4.add(0, 0, -1))) {
             return new BlockData(pos4.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos5 = pos.add(0, -1, 0);
-        if (this.isPosSolid(pos5.add(0, -1, 0))) {
+        if (isPosSolid(pos5.add(0, -1, 0))) {
             return new BlockData(pos5.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos5.add(-1, 0, 0))) {
+        if (isPosSolid(pos5.add(-1, 0, 0))) {
             return new BlockData(pos5.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos5.add(1, 0, 0))) {
+        if (isPosSolid(pos5.add(1, 0, 0))) {
             return new BlockData(pos5.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos5.add(0, 0, 1))) {
+        if (isPosSolid(pos5.add(0, 0, 1))) {
             return new BlockData(pos5.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos5.add(0, 0, -1))) {
+        if (isPosSolid(pos5.add(0, 0, -1))) {
             return new BlockData(pos5.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos6 = pos5.add(1, 0, 0);
-        if (this.isPosSolid(pos6.add(0, -1, 0))) {
+        if (isPosSolid(pos6.add(0, -1, 0))) {
             return new BlockData(pos6.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos6.add(-1, 0, 0))) {
+        if (isPosSolid(pos6.add(-1, 0, 0))) {
             return new BlockData(pos6.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos6.add(1, 0, 0))) {
+        if (isPosSolid(pos6.add(1, 0, 0))) {
             return new BlockData(pos6.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos6.add(0, 0, 1))) {
+        if (isPosSolid(pos6.add(0, 0, 1))) {
             return new BlockData(pos6.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos6.add(0, 0, -1))) {
+        if (isPosSolid(pos6.add(0, 0, -1))) {
             return new BlockData(pos6.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos7 = pos5.add(-1, 0, 0);
-        if (this.isPosSolid(pos7.add(0, -1, 0))) {
+        if (isPosSolid(pos7.add(0, -1, 0))) {
             return new BlockData(pos7.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos7.add(-1, 0, 0))) {
+        if (isPosSolid(pos7.add(-1, 0, 0))) {
             return new BlockData(pos7.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos7.add(1, 0, 0))) {
+        if (isPosSolid(pos7.add(1, 0, 0))) {
             return new BlockData(pos7.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos7.add(0, 0, 1))) {
+        if (isPosSolid(pos7.add(0, 0, 1))) {
             return new BlockData(pos7.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos7.add(0, 0, -1))) {
+        if (isPosSolid(pos7.add(0, 0, -1))) {
             return new BlockData(pos7.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos8 = pos5.add(0, 0, 1);
-        if (this.isPosSolid(pos8.add(0, -1, 0))) {
+        if (isPosSolid(pos8.add(0, -1, 0))) {
             return new BlockData(pos8.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos8.add(-1, 0, 0))) {
+        if (isPosSolid(pos8.add(-1, 0, 0))) {
             return new BlockData(pos8.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos8.add(1, 0, 0))) {
+        if (isPosSolid(pos8.add(1, 0, 0))) {
             return new BlockData(pos8.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos8.add(0, 0, 1))) {
+        if (isPosSolid(pos8.add(0, 0, 1))) {
             return new BlockData(pos8.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos8.add(0, 0, -1))) {
+        if (isPosSolid(pos8.add(0, 0, -1))) {
             return new BlockData(pos8.add(0, 0, -1), EnumFacing.SOUTH);
         }
         BlockPos pos9 = pos5.add(0, 0, -1);
-        if (this.isPosSolid(pos9.add(0, -1, 0))) {
+        if (isPosSolid(pos9.add(0, -1, 0))) {
             return new BlockData(pos9.add(0, -1, 0), EnumFacing.UP);
         }
-        if (this.isPosSolid(pos9.add(-1, 0, 0))) {
+        if (isPosSolid(pos9.add(-1, 0, 0))) {
             return new BlockData(pos9.add(-1, 0, 0), EnumFacing.EAST);
         }
-        if (this.isPosSolid(pos9.add(1, 0, 0))) {
+        if (isPosSolid(pos9.add(1, 0, 0))) {
             return new BlockData(pos9.add(1, 0, 0), EnumFacing.WEST);
         }
-        if (this.isPosSolid(pos9.add(0, 0, 1))) {
+        if (isPosSolid(pos9.add(0, 0, 1))) {
             return new BlockData(pos9.add(0, 0, 1), EnumFacing.NORTH);
         }
-        if (this.isPosSolid(pos9.add(0, 0, -1))) {
+        if (isPosSolid(pos9.add(0, 0, -1))) {
             return new BlockData(pos9.add(0, 0, -1), EnumFacing.SOUTH);
         }
         return null;
@@ -547,111 +713,75 @@ public class Scaffold extends Module {
 
     private boolean isPosSolid(BlockPos pos) {
         Block block = mc.theWorld.getBlockState(pos).getBlock();
-        return (block.getMaterial().isSolid() || !block.isTranslucent() || block.isVisuallyOpaque() || block instanceof BlockLadder || block instanceof BlockCarpet || block instanceof BlockSnow || block instanceof BlockSkull) && !block.getMaterial().isLiquid() && !(block instanceof BlockContainer);
-    }
-
-    public int getBlockCount() {
-        int n = 0;
-        int i = 36;
-        while (i < 45) {
-            if (mc.thePlayer.inventoryContainer.getSlot(i).getHasStack()) {
-                final ItemStack stack = mc.thePlayer.inventoryContainer.getSlot(i).getStack();
-                final Item item = stack.getItem();
-                if (stack.getItem() instanceof ItemBlock && this.isValid(item)) {
-                    n += stack.stackSize;
-                }
-            }
-            ++i;
-        }
-        return n;
-    }
-
-    public int getallBlockCount() {
-        int n = 0;
-        int i = 0;
-        while (i < 36) {
-            if (mc.thePlayer.inventoryContainer.getSlot(i).getHasStack()) {
-                final ItemStack stack = mc.thePlayer.inventoryContainer.getSlot(i).getStack();
-                final Item item = stack.getItem();
-                if (stack.getItem() instanceof ItemBlock && this.isValid(item)) {
-                    n += stack.stackSize;
-                }
-            }
-            ++i;
-        }
-        return n;
-    }
-
-    private boolean isValid(final Item item) {
-        return item instanceof ItemBlock && !invalidBlocks.contains(((ItemBlock) item).getBlock());
-    }
-
-    public void swap(int slot1, int hotbarSlot) {
-        Minecraft.playerController.windowClick(mc.thePlayer.inventoryContainer.windowId, slot1, hotbarSlot, 2, mc.thePlayer);
-    }
-
-    void getBlock(int hotbarSlot) {
-        for (int i = 9; i < 45; ++i) {
-            Minecraft var10000 = mc;
-            if (mc.thePlayer.inventoryContainer.getSlot(i).getHasStack() && (Minecraft.currentScreen == null || Minecraft.currentScreen instanceof GuiInventory)) {
-                var10000 = mc;
-                ItemStack is = mc.thePlayer.inventoryContainer.getSlot(i).getStack();
-                if (is.getItem() instanceof ItemBlock) {
-                    ItemBlock block = (ItemBlock) is.getItem();
-                    if (isValid(block)) {
-                        if (36 + hotbarSlot != i) {
-                            this.swap(i, hotbarSlot);
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-
-    }
-
-    int getBestSpoofSlot() {
-        int spoofSlot = 5;
-
-        for (int i = 36; i < 45; ++i) {
-            if (!mc.thePlayer.inventoryContainer.getSlot(i).getHasStack()) {
-                spoofSlot = i - 36;
-                break;
-            }
-        }
-
-        return spoofSlot;
-    }
-
-    public boolean isAirBlock(Block block) {
-        return block.getMaterial().isReplaceable() && (!(block instanceof BlockSnow) || block.getBlockBoundsMaxY() <= 0.125);
+        return (block.getMaterial().isSolid() || !block.isTranslucent() || (block.getMaterial().blocksMovement() && block.isFullCube()) || block instanceof BlockLadder || block instanceof BlockCarpet
+                || block instanceof BlockSnow || block instanceof BlockSkull)
+                && !block.getMaterial().isLiquid() && !(block instanceof BlockContainer);
     }
 
     private static class BlockData {
-        private final BlockPos pos;
-        private final EnumFacing facing;
-        private Vec3 vec;
+        private final BlockPos position;
+        private final EnumFacing face;
 
-        public BlockData(final BlockPos pos, final EnumFacing facing) {
-            this.pos = pos;
-            this.facing = facing;
+        private BlockData(BlockPos position, EnumFacing face) {
+            this.position = position;
+            this.face = face;
         }
+    }
 
-        public Vec3 getVec() {
-            return this.vec;
-        }
+    public static final List<Block> invalidBlocks = Arrays.asList(Blocks.enchanting_table,
+            Blocks.furnace,
+            Blocks.carpet,
+            Blocks.command_block,
+            Blocks.crafting_table,
+            Blocks.chest,
+            Blocks.trapped_chest,
+            Blocks.ender_chest,
+            Blocks.dispenser,
+            Blocks.air,
+            Blocks.water,
+            Blocks.flowing_water,
+            Blocks.lava,
+            Blocks.flowing_lava,
+            Blocks.sand,
+            Blocks.snow_layer,
+            Blocks.torch,
+            Blocks.anvil,
+            Blocks.jukebox,
+            Blocks.wooden_button,
+            Blocks.stone_button,
+            Blocks.lever,
+            Blocks.noteblock,
+            Blocks.wooden_pressure_plate,
+            Blocks.stone_pressure_plate,
+            Blocks.light_weighted_pressure_plate,
+            Blocks.heavy_weighted_pressure_plate,
+            Blocks.red_mushroom,
+            Blocks.brown_mushroom,
+            Blocks.red_flower,
+            Blocks.yellow_flower,
+            Blocks.ladder,
+            Blocks.web,
+            Blocks.beacon
+    );
 
-        public void setVec(final Vec3 vec) {
-            this.vec = vec;
-        }
+    enum RotMode {
+        Normal, NCP, Head, StaticHead, Facing, Back, None
+    }
 
-        public BlockPos getBlockPos() {
-            return this.pos;
-        }
+    enum TowMode {
+        Vanilla, Hypixel, TP, Low, Slow
+    }
 
-        public EnumFacing getEnumFacing() {
-            return this.facing;
-        }
+    enum ItemMode {
+        Spoof, Switch
+    }
+
+    enum PlaceMode {
+        Pre, Post, Tick
+    }
+
+    enum EagleMode {
+        Key, Packet
     }
 }
 

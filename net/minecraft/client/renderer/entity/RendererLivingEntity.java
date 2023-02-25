@@ -8,6 +8,9 @@ import me.dev.foodtower.utils.math.Rotation;
 import com.google.common.collect.Lists;
 import java.nio.FloatBuffer;
 import java.util.List;
+
+import me.dev.foodtower.utils.math.RotationObject;
+import me.dev.foodtower.utils.math.RotationUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.FontRenderer;
@@ -149,9 +152,11 @@ public abstract class RendererLivingEntity<T extends EntityLivingBase> extends R
             }
 
             float f7;
-            if (entity == Minecraft.getMinecraft().thePlayer && Scaffold.getBlockSlot() != -1 &&
+            RotationObject rotationObject  = new RotationObject();
+            Killaura ka = new Killaura();
+            if (entity == Minecraft.getMinecraft().thePlayer && Scaffold.getBestSpoofSlot() != -1 &&
                     Client.instance.getModuleManager().getModuleByClass(Scaffold.class).isEnabled()) {
-                f7 = Rotation.getPitch();
+                f7 = Scaffold.savePitch;
             } else if (entity == Minecraft.getMinecraft().thePlayer && Killaura.curTarget != null && Client.instance.getModuleManager().getModuleByClass(Killaura.class).isEnabled()) {
                 f7 = Killaura.rotations[1];
             } else {

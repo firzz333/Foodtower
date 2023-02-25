@@ -48,8 +48,9 @@ public class ModuleManager
 
     @Override
     public void init() {
-        registerModule(new LegitScaffold());
+        registerModule(new AntiBan());
         registerModule(new KeepSprint());
+        registerModule(new LegitScaffold());
         registerModule(new Killaura());
         registerModule(new AntiAim());
         registerModule(new AutoGapple());

@@ -56,6 +56,13 @@ public class MoveUtils {
         }
         return baseJumpHeight;
     }
+
+    public static double getEntitySpeed(Entity entity) {
+        double xDif = entity.posX - entity.prevPosX;
+        double zDif = entity.posZ - entity.prevPosZ;
+        return (Math.sqrt(xDif * xDif + zDif * zDif) * 20.0);
+    }
+
     public static boolean isBlockUnder() {
         if (mc.thePlayer == null) return false;
 
@@ -70,6 +77,11 @@ public class MoveUtils {
         }
         return false;
     }
+
+    public static float getDirection(float yaw) {
+        return yaw * ((float) Math.PI / 180.0f);
+    }
+
     public static double getBaseSpeed(double v1, double v3) {
         if(mc.thePlayer.isPotionActive(Potion.moveSpeed)) {
             int a1 = mc.thePlayer.getActivePotionEffect(Potion.moveSpeed).getAmplifier() + 1 - (mc.thePlayer.isPotionActive(Potion.moveSlowdown)?mc.thePlayer.getActivePotionEffect(Potion.moveSlowdown).getAmplifier() + 1:0);
